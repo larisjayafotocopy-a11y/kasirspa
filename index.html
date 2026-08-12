@@ -2790,7 +2790,7 @@
                                 style="width:100%;background:#10b981;color:#fff;border:none;border-radius:10px;padding:10px;font-size:.82rem;font-weight:700;cursor:pointer">
                                 🔐 Ganti Password Saya
                             </button>
-                            <div style="font-size:.7rem;color:#94a3b8;margin-top:8px">Untuk kelola akun staff lain, hubungi admin (Panel Admin).</div>
+                            <div style="font-size:.7rem;color:#94a3b8;margin-top:8px" id="cfg-pass-hint-owner">Owner bisa kelola akun Kasir di kartu "Kelola Staff" di bawah.</div>
                         </div>
 
                         <div style="height:1px;background:#f1f5f9;margin:16px 0"></div>
@@ -2865,6 +2865,22 @@
                 </div>
 
                 </div><!-- end cfg-grid-top -->
+
+                <!-- ROW 1.5: Kelola Staff — Owner only, full width -->
+                <div style="background:#fff;border-radius:16px;margin-bottom:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.06);border:1px solid #e2e8f0" id="cfg-staff-section">
+                    <div style="padding:14px 18px;background:linear-gradient(90deg,#f5f3ff,#fff);border-bottom:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+                        <div style="display:flex;align-items:center;gap:8px">
+                            <span style="font-size:1rem">👥</span>
+                            <span style="font-size:.78rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#5b21b6">Kelola Staff</span>
+                        </div>
+                        <button onclick="openAddStaffModal()" style="background:#7c3aed;color:white;border:none;border-radius:10px;padding:8px 16px;font-size:.78rem;font-weight:700;cursor:pointer">➕ Tambah Kasir</button>
+                    </div>
+                    <div style="padding:16px 18px">
+                        <div id="staff-list-container" style="display:flex;flex-direction:column;gap:8px">
+                            <div style="text-align:center;padding:20px;color:#94a3b8;font-size:.82rem">Memuat daftar staff...</div>
+                        </div>
+                    </div>
+                </div>
 
                 <!-- ROW 2: Backup full width -->
                 <!-- ── CARD BACKUP & RESTORE ── -->
@@ -3260,6 +3276,38 @@
         </div>
     </div>
 
+    <!-- ========== MODAL TAMBAH KASIR ========== -->
+    <div id="add-staff-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9100;align-items:center;justify-content:center;padding:16px">
+        <div style="background:white;border-radius:20px;width:100%;max-width:400px;box-shadow:0 24px 60px rgba(0,0,0,.3);overflow:hidden">
+            <div style="background:linear-gradient(135deg,#4c1d95,#7c3aed);padding:18px 22px;color:white;display:flex;justify-content:space-between;align-items:center">
+                <div>
+                    <div style="font-size:1rem;font-weight:800">➕ Tambah Akun Kasir</div>
+                    <div style="font-size:.7rem;opacity:.7;margin-top:2px">Kasir baru bisa login pakai email & password ini</div>
+                </div>
+                <button onclick="closeAddStaffModal()" style="background:rgba(255,255,255,.15);border:none;border-radius:8px;padding:6px 10px;color:white;cursor:pointer;font-size:.85rem">✕</button>
+            </div>
+            <div style="padding:20px 22px;display:flex;flex-direction:column;gap:14px">
+                <div>
+                    <div style="font-size:.65rem;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:#64748b;margin-bottom:6px">Nama Kasir</div>
+                    <input type="text" id="staff-nama" class="add-field-input" placeholder="Nama kasir" style="width:100%">
+                </div>
+                <div>
+                    <div style="font-size:.65rem;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:#64748b;margin-bottom:6px">Email</div>
+                    <input type="email" id="staff-email" class="add-field-input" placeholder="email@kasir.com" style="width:100%">
+                </div>
+                <div>
+                    <div style="font-size:.65rem;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:#64748b;margin-bottom:6px">Password (opsional)</div>
+                    <input type="text" id="staff-password" class="add-field-input" placeholder="Kosongkan untuk generate otomatis" style="width:100%">
+                </div>
+                <div id="staff-result-box" style="display:none;background:#f0fdf4;border:1px solid #a7f3d0;border-radius:10px;padding:12px 14px;font-size:.78rem;line-height:1.8"></div>
+            </div>
+            <div style="padding:14px 22px;border-top:1px solid #e2e8f0;display:flex;gap:8px;justify-content:flex-end">
+                <button onclick="closeAddStaffModal()" style="background:#f1f5f9;border:1.5px solid #e2e8f0;border-radius:10px;padding:9px 18px;font-weight:700;font-size:.82rem;cursor:pointer;color:#64748b">Tutup</button>
+                <button id="add-staff-btn" onclick="submitAddStaff()" style="background:#7c3aed;border:none;border-radius:10px;padding:9px 20px;font-weight:700;font-size:.82rem;cursor:pointer;color:white">➕ Buat Akun</button>
+            </div>
+        </div>
+    </div>
+
     <!-- ========== MODAL TAMBAH/EDIT BOOKING ========== -->
     <div id="booking-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9100;align-items:center;justify-content:center;padding:16px">
         <div style="background:white;border-radius:20px;width:100%;max-width:440px;box-shadow:0 24px 60px rgba(0,0,0,.3);overflow:hidden;max-height:92vh;display:flex;flex-direction:column">
@@ -3325,7 +3373,7 @@
     // Nomor WA admin/seller (kamu) — dipakai tombol "Hubungi Admin" di halaman
     // Lisensi & notifikasi masa langganan hampir habis. SATU nomor untuk semua
     // tenant (karena ini kontak kamu sebagai penyedia layanan, bukan per-tenant).
-    const _ADMIN_WA = '6282114515053'; // format: 628xxxxxxxxxx
+    const _ADMIN_WA = 'GANTI_NOMOR_WA_ADMIN'; // format: 628xxxxxxxxxx
     // URL tempat booking-publik.html di-hosting (SATU domain untuk semua tenant —
     // tiap tenant beda cuma di parameter ?spa=slug-nya). Isi setelah booking-publik.html
     // selesai di-deploy (mis. https://booking.namadomainkamu.com/).
@@ -4600,7 +4648,7 @@
         if (pageId === 'lisensi') { if (typeof window.renderLicensePage === 'function') window.renderLicensePage(); }
 
         // Render halaman pengaturan jika dibuka
-        if (pageId === 'pengaturan') { if (typeof window.renderPengaturan === 'function') window.renderPengaturan(); }
+        if (pageId === 'pengaturan') { if (typeof window.renderPengaturan === 'function') window.renderPengaturan(); loadStaffList(); }
 
         // Show/hide floating total bar — hanya di halaman billing
         const ftbBar = document.getElementById('floating-total-bar');
@@ -9926,6 +9974,132 @@
         if (m) m.addEventListener('click', e => { if (e.target === m) closeGantiPass(); });
     });
 
+    /* ============================================================
+       KELOLA STAFF — Owner tambah/nonaktifkan akun Kasir
+       Lewat Edge Function manage-staff (butuh service_role buat bikin
+       akun Auth baru, tabel staff sendiri dikunci dari client langsung).
+    ============================================================ */
+    function openAddStaffModal() {
+        if (currentRole !== 'owner') { showToast('⛔ Hanya Owner yang bisa tambah staff'); return; }
+        document.getElementById('staff-nama').value = '';
+        document.getElementById('staff-email').value = '';
+        document.getElementById('staff-password').value = '';
+        document.getElementById('staff-result-box').style.display = 'none';
+        document.getElementById('add-staff-modal').style.display = 'flex';
+    }
+
+    function closeAddStaffModal() {
+        document.getElementById('add-staff-modal').style.display = 'none';
+        loadStaffList(); // refresh daftar kalau ada penambahan baru
+    }
+
+    async function callManageStaff(payload) {
+        const { data: sessionData } = await supa.auth.getSession();
+        const token = sessionData?.session?.access_token;
+        if (!token) throw new Error('Sesi login tidak valid, silakan login ulang');
+
+        const res = await fetch(`${SUPABASE_URL}/functions/v1/manage-staff`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Gagal memproses permintaan');
+        return data;
+    }
+
+    async function submitAddStaff() {
+        const nama = document.getElementById('staff-nama').value.trim();
+        const email = document.getElementById('staff-email').value.trim();
+        const password = document.getElementById('staff-password').value.trim();
+
+        if (!nama) return alert('⚠️ Nama kasir tidak boleh kosong');
+        if (!email) return alert('⚠️ Email tidak boleh kosong');
+
+        const btn = document.getElementById('add-staff-btn');
+        btn.disabled = true;
+        btn.textContent = '⏳ Memproses...';
+
+        try {
+            const result = await callManageStaff({ action: 'create', nama, email, password: password || undefined });
+            const box = document.getElementById('staff-result-box');
+            box.style.display = 'block';
+            box.innerHTML = `
+                ✅ <b>Akun kasir berhasil dibuat!</b><br>
+                📧 Email: <b>${result.email}</b><br>
+                🔑 Password: <b>${result.password}</b><br>
+                <span style="color:#64748b">Kirim kredensial ini ke kasir yang bersangkutan.</span>
+            `;
+            document.getElementById('staff-nama').value = '';
+            document.getElementById('staff-email').value = '';
+            document.getElementById('staff-password').value = '';
+            showToast('✅ Akun kasir berhasil dibuat!');
+            loadStaffList();
+        } catch (e) {
+            showToast('❌ ' + e.message);
+        } finally {
+            btn.disabled = false;
+            btn.textContent = '➕ Buat Akun';
+        }
+    }
+
+    async function loadStaffList() {
+        const container = document.getElementById('staff-list-container');
+        if (!container || currentRole !== 'owner') return;
+
+        try {
+            const { data, error } = await supa.from('staff').select('*').order('created_at', { ascending: true });
+            if (error) throw error;
+
+            if (!data || data.length === 0) {
+                container.innerHTML = '<div style="text-align:center;padding:20px;color:#94a3b8;font-size:.82rem">Belum ada staff</div>';
+                return;
+            }
+
+            container.innerHTML = data.map(s => {
+                const isMe = s.id === currentBusiness?.staff_id;
+                const roleLabel = s.role === 'owner' ? '👑 Owner' : '🧾 Kasir';
+                const statusBadge = s.is_active
+                    ? '<span style="background:#d1fae5;color:#047857;font-size:.68rem;font-weight:800;padding:3px 9px;border-radius:999px">Aktif</span>'
+                    : '<span style="background:#fee2e2;color:#b91c1c;font-size:.68rem;font-weight:800;padding:3px 9px;border-radius:999px">Nonaktif</span>';
+
+                let actionBtn = '';
+                if (s.role === 'kasir') {
+                    actionBtn = `<button onclick="toggleStaffActive('${s.id}','${(s.nama||'').replace(/'/g,"\\'")}',${s.is_active})"
+                        style="background:${s.is_active ? '#fee2e2' : '#d1fae5'};border:1.5px solid ${s.is_active ? '#fca5a5' : '#6ee7b7'};color:${s.is_active ? '#b91c1c' : '#047857'};border-radius:8px;padding:6px 12px;font-size:.72rem;font-weight:700;cursor:pointer">
+                        ${s.is_active ? '⛔ Nonaktifkan' : '✅ Aktifkan'}</button>`;
+                }
+
+                return `
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;background:#f8fafc;border-radius:10px;flex-wrap:wrap">
+                    <div>
+                        <div style="font-size:.85rem;font-weight:700;color:#1e293b">${s.nama}${isMe ? ' <span style="color:#94a3b8;font-weight:500;font-size:.72rem">(kamu)</span>' : ''}</div>
+                        <div style="font-size:.72rem;color:#64748b">${roleLabel}</div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:8px">
+                        ${statusBadge}
+                        ${actionBtn}
+                    </div>
+                </div>`;
+            }).join('');
+        } catch (e) {
+            container.innerHTML = `<div style="text-align:center;padding:20px;color:#dc2626;font-size:.82rem">Gagal memuat: ${e.message}</div>`;
+        }
+    }
+
+    async function toggleStaffActive(staffId, nama, currentlyActive) {
+        const action = currentlyActive ? 'menonaktifkan' : 'mengaktifkan';
+        if (!confirm(`Yakin ${action} akun "${nama}"?`)) return;
+
+        try {
+            await callManageStaff({ action: 'toggle', staff_id: staffId });
+            showToast(`✅ Berhasil ${action} akun ${nama}`);
+            loadStaffList();
+        } catch (e) {
+            showToast('❌ ' + e.message);
+        }
+    }
+
     function applyRoleUI() {
         const isOwner = currentRole === 'owner';
 
@@ -9968,6 +10142,10 @@
             if (isOwner) backdateRow.classList.remove('hidden');
             else { backdateRow.classList.add('hidden'); const _bd = document.getElementById('bill-backdate'); if (_bd) _bd.value = ''; const _bf = document.getElementById('bill-backdate-fmt'); if (_bf) _bf.textContent = ''; }
         }
+
+        // Kartu Kelola Staff: hanya Owner
+        const staffSection = document.getElementById('cfg-staff-section');
+        if (staffSection) staffSection.style.display = isOwner ? 'block' : 'none';
     }
 
     // Catatan: pemulihan sesi login sekarang ditangani lewat Supabase Auth
