@@ -1,0 +1,2597 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KasirPro — Admin Panel</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@300;400;600;700&family=Poppins:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --black:#080b0f;
+  --dark:#0d1117;
+  --card:#111820;
+  --card2:#161f2b;
+  --border:rgba(255,255,255,.07);
+  --border2:rgba(255,255,255,.12);
+  --green:#00e676;
+  --green2:#69f0ae;
+  --green3:rgba(0,230,118,.15);
+  --green4:rgba(0,230,118,.06);
+  --amber:#ffb300;
+  --amber-dim:rgba(255,179,0,.08);
+  --red:#ff5252;
+  --red-dim:rgba(255,82,82,.08);
+  --blue:#448aff;
+  --text:#e8edf5;
+  --muted:#4a5568;
+  --muted2:#718096;
+  --font-head:'Josefin Sans',sans-serif;
+  --font-body:'Poppins',sans-serif;
+  --font-mono:'JetBrains Mono',monospace;
+}
+
+html{scroll-behavior:smooth}
+body{font-family:var(--font-body);background:var(--black);color:var(--text);min-height:100vh;overflow-x:hidden}
+
+/* ── SCANLINE ── */
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:999;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.03) 2px,rgba(0,0,0,.03) 4px);}
+
+/* ── GRID BG ── */
+.bg-grid{position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:linear-gradient(rgba(0,230,118,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(0,230,118,.04) 1px,transparent 1px);
+  background-size:60px 60px;mask-image:radial-gradient(ellipse 80% 80% at 50% 50%,black 40%,transparent 100%);}
+.glow-tl{position:fixed;top:-300px;left:-200px;width:700px;height:700px;border-radius:50%;
+  background:radial-gradient(circle,rgba(0,230,118,.07) 0%,transparent 60%);pointer-events:none;z-index:0;
+  animation:glowPulse 6s ease-in-out infinite alternate;}
+.glow-br{position:fixed;bottom:-200px;right:-200px;width:600px;height:600px;border-radius:50%;
+  background:radial-gradient(circle,rgba(68,138,255,.05) 0%,transparent 60%);pointer-events:none;z-index:0;}
+@keyframes glowPulse{from{opacity:.6;transform:scale(1)}to{opacity:1;transform:scale(1.1)}}
+@keyframes fadeInDown{from{opacity:0;transform:translateY(-20px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeInUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+
+/* ══════════════════════════════════
+   LOGIN SCREEN
+══════════════════════════════════ */
+#login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;
+  background:radial-gradient(ellipse 60% 60% at 50% 0%,rgba(0,230,118,.06) 0%,transparent 70%);}
+.login-box{background:var(--card);border:1px solid var(--border2);border-radius:16px;padding:40px;
+  width:100%;max-width:420px;box-shadow:0 0 60px rgba(0,230,118,.06);animation:fadeInDown .5s ease both;}
+.login-logo{font-family:var(--font-head);font-size:1.8rem;font-weight:700;letter-spacing:.04em;color:var(--green);margin-bottom:2px}
+.login-version{font-family:var(--font-mono);font-size:.65rem;color:var(--muted);letter-spacing:.1em;margin-bottom:28px}
+.login-label{font-family:var(--font-head);font-size:.62rem;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--muted2);margin-bottom:8px;display:block}
+.login-input{width:100%;background:#0a0f14;border:1.5px solid var(--border2);color:var(--text);border-radius:8px;
+  padding:11px 14px;font-family:var(--font-mono);font-size:.88rem;outline:none;margin-bottom:16px;transition:border-color .2s,box-shadow .2s;}
+.login-input:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(0,230,118,.1)}
+.login-btn{width:100%;background:var(--green);color:var(--black);border:none;border-radius:8px;padding:13px;
+  font-family:var(--font-head);font-size:.95rem;font-weight:700;letter-spacing:.1em;cursor:pointer;
+  transition:all .3s cubic-bezier(.34,1.56,.64,1);margin-top:4px;}
+.login-btn:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(0,230,118,.3)}
+.login-err{font-size:.78rem;color:var(--red);margin-top:10px;display:none;font-family:var(--font-mono)}
+
+/* ══════════════════════════════════
+   APP SHELL — SIDEBAR
+══════════════════════════════════ */
+#app{display:none}
+.sidebar{
+  position:fixed;top:0;left:0;width:200px;height:100vh;
+  background:var(--card);border-right:1px solid var(--border);
+  padding:0;display:flex;flex-direction:column;z-index:100;
+}
+.s-header{padding:20px 16px 16px;border-bottom:1px solid var(--border)}
+.s-logo{font-family:var(--font-head);font-size:1rem;font-weight:700;letter-spacing:.06em;color:var(--green)}
+.s-sub{font-family:var(--font-mono);font-size:.58rem;color:var(--muted);letter-spacing:.08em;margin-top:2px}
+.s-meta{display:flex;align-items:center;gap:6px;margin-top:8px}
+.s-dot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:blink 2s step-end infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+.s-online{font-family:var(--font-mono);font-size:.6rem;color:var(--green2)}
+.s-nav{padding:12px 8px;flex:1;overflow-y:auto}
+.nav-btn{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;border:none;
+  background:transparent;color:var(--muted2);font-family:var(--font-body);font-size:.8rem;font-weight:500;
+  cursor:pointer;text-align:left;width:100%;transition:all .15s;position:relative;}
+.nav-btn:hover{background:var(--card2);color:var(--text)}
+.nav-btn.active{background:var(--green4);color:var(--green)}
+.nav-btn.active::before{content:'';position:absolute;left:0;top:4px;bottom:4px;width:2px;background:var(--green);border-radius:2px;box-shadow:0 0 8px var(--green)}
+.nav-icon{font-size:.95rem;width:18px;text-align:center}
+.nav-badge{margin-left:auto;background:var(--red);color:#fff;font-size:.6rem;font-weight:700;font-family:var(--font-mono);
+  padding:2px 6px;border-radius:10px;min-width:18px;text-align:center;display:none}
+.nav-badge.show{display:block}
+.s-footer{padding:12px 8px;border-top:1px solid var(--border)}
+
+/* ══════════════════════════════════
+   MAIN CONTENT
+══════════════════════════════════ */
+.main{margin-left:200px;min-height:100vh;position:relative;z-index:1}
+.page{display:none;padding:32px 28px 80px}
+.page.active{display:block;animation:fadeInUp .3s ease both}
+.page-header{margin-bottom:28px}
+.page-title{font-family:var(--font-head);font-size:1.3rem;font-weight:700;letter-spacing:.04em;margin-bottom:3px}
+.page-sub{font-size:.78rem;color:var(--muted2)}
+
+/* ── STATS ── */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 18px;position:relative;overflow:hidden}
+.stat-card::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;opacity:0;transition:opacity .3s}
+.stat-card.green::after{background:linear-gradient(90deg,var(--green),var(--green2));opacity:1}
+.stat-card.amber::after{background:var(--amber);opacity:1}
+.stat-card.red::after{background:var(--red);opacity:1}
+.stat-card.blue::after{background:var(--blue);opacity:1}
+.stat-lbl{font-family:var(--font-mono);font-size:.62rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.stat-val{font-family:var(--font-head);font-size:2rem;font-weight:700;line-height:1}
+.stat-sub{font-size:.7rem;color:var(--muted);margin-top:5px}
+.stat-card.green .stat-val{color:var(--green)}
+.stat-card.amber .stat-val{color:var(--amber)}
+.stat-card.red .stat-val{color:var(--red)}
+.stat-card.blue .stat-val{color:var(--blue)}
+
+/* ── CARD ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;margin-bottom:12px;
+  position:relative;transition:border-color .2s;}
+.card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;
+  background:linear-gradient(180deg,var(--green),var(--green2));opacity:0;transition:opacity .3s;border-radius:12px 0 0 12px;}
+.card:hover{border-color:var(--border2)}
+.card:hover::before{opacity:.4}
+.card-head{padding:16px 22px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border);
+  background:linear-gradient(90deg,rgba(0,230,118,.02) 0%,transparent 50%);}
+.step-badge{font-family:var(--font-mono);font-size:.62rem;font-weight:700;color:var(--green);
+  background:var(--green4);border:1px solid rgba(0,230,118,.25);border-radius:6px;padding:4px 9px;letter-spacing:.06em;flex-shrink:0;}
+.card-title{font-family:var(--font-head);font-size:.9rem;font-weight:700;letter-spacing:.04em}
+.card-sub{font-size:.68rem;color:var(--muted2);margin-top:2px}
+.card-body{padding:20px 22px}
+.card.locked{opacity:.35;pointer-events:none;filter:grayscale(.5)}
+
+/* ── TABLE ── */
+.tbl-wrap{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.tbl-head{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.tbl-head-title{font-family:var(--font-head);font-size:.85rem;font-weight:700;letter-spacing:.04em}
+table{width:100%;border-collapse:collapse}
+th{padding:9px 14px;text-align:left;font-family:var(--font-mono);font-size:.6rem;font-weight:700;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);background:var(--card2);}
+td{padding:11px 14px;font-size:.79rem;border-bottom:1px solid var(--border);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,.012)}
+.td-biz{font-family:var(--font-head);font-weight:700;font-size:.85rem}
+.td-mono{font-family:var(--font-mono);font-size:.7rem;color:var(--muted2)}
+
+/* ── BADGES ── */
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:4px;font-family:var(--font-mono);font-size:.63rem;font-weight:700;letter-spacing:.05em}
+.badge.aktif{background:rgba(0,230,118,.1);color:var(--green2);border:1px solid rgba(0,230,118,.2)}
+.badge.warning{background:rgba(255,179,0,.1);color:var(--amber);border:1px solid rgba(255,179,0,.2)}
+.badge.expired{background:rgba(255,82,82,.1);color:var(--red);border:1px solid rgba(255,82,82,.2)}
+.badge.nonaktif{background:rgba(74,85,104,.15);color:var(--muted2);border:1px solid var(--border2)}
+.badge.plan3{background:rgba(0,230,118,.1);color:var(--green2);border:1px solid rgba(0,230,118,.2)}
+.badge.plan6{background:rgba(68,138,255,.1);color:#90caf9;border:1px solid rgba(68,138,255,.2)}
+.badge.plan12{background:rgba(179,136,255,.1);color:#ce93d8;border:1px solid rgba(179,136,255,.2)}
+.badge.plancustom{background:rgba(236,72,153,.1);color:#f472b6;border:1px solid rgba(236,72,153,.2)}
+
+/* ── BUTTONS ── */
+.btn{padding:6px 12px;border-radius:6px;border:none;font-family:var(--font-body);font-size:.74rem;font-weight:600;cursor:pointer;transition:all .15s}
+.btn-g{background:rgba(0,230,118,.08);color:var(--green2);border:1px solid rgba(0,230,118,.2)}
+.btn-g:hover{background:var(--green);color:var(--black)}
+.btn-r{background:rgba(255,82,82,.08);color:var(--red);border:1px solid rgba(255,82,82,.2)}
+.btn-r:hover{background:var(--red);color:#fff}
+.btn-a{background:rgba(255,179,0,.08);color:var(--amber);border:1px solid rgba(255,179,0,.2)}
+.btn-a:hover{background:var(--amber);color:var(--black)}
+.btn-b{background:rgba(68,138,255,.08);color:#90caf9;border:1px solid rgba(68,138,255,.2)}
+.btn-b:hover{background:var(--blue);color:#fff}
+.btn-primary{background:var(--green);color:var(--black);padding:10px 20px;font-family:var(--font-head);font-size:.82rem;font-weight:700;letter-spacing:.06em;border-radius:8px;border:none;cursor:pointer;transition:all .2s}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,230,118,.3)}
+.btn-primary:disabled{background:var(--card2);color:var(--muted);box-shadow:none;transform:none;cursor:not-allowed}
+.btn-sec{background:transparent;border:1px solid var(--border2);color:var(--muted2);padding:9px 18px;border-radius:7px;font-weight:600;font-size:.76rem;cursor:pointer;font-family:var(--font-body);transition:all .2s}
+.btn-sec:hover{border-color:var(--green);color:var(--green2)}
+.btn-sec.g{border-color:rgba(0,230,118,.3);color:var(--green2)}
+.btn-sec.g:hover{background:var(--green4)}
+
+/* ── FORM ── */
+.field{margin-bottom:16px}
+.flabel{display:block;font-family:var(--font-head);font-size:.6rem;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--muted2);margin-bottom:7px}
+.flabel .req{color:var(--green)}
+.finput{width:100%;background:#0a0f14;border:1.5px solid var(--border2);border-radius:8px;padding:10px 13px;color:var(--text);font-size:.82rem;font-family:var(--font-mono);outline:none;transition:border-color .2s,box-shadow .2s;display:block}
+.finput.txt{font-family:var(--font-body)}
+.finput:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(0,230,118,.1)}
+.finput::placeholder{color:var(--muted);font-family:var(--font-body);font-size:.76rem}
+.finput:disabled{opacity:.4;cursor:not-allowed}
+.fhint{font-size:.65rem;color:var(--muted);margin-top:5px;line-height:1.5}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+
+/* ── SECTION DIVIDER ── */
+.sec{display:flex;align-items:center;gap:10px;margin:20px 0 14px;font-family:var(--font-mono);font-size:.62rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--green)}
+.sec::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* ── INFOBOX ── */
+.infobox{background:rgba(0,230,118,.04);border:1px solid rgba(0,230,118,.12);border-left:3px solid var(--green);border-radius:8px;padding:11px 15px;font-size:.76rem;color:var(--muted2);line-height:1.65;margin-bottom:16px}
+.infobox strong{color:var(--green2)}
+.warnbox{background:rgba(255,179,0,.05);border:1px solid rgba(255,179,0,.15);border-left:3px solid var(--amber);border-radius:8px;padding:11px 15px;font-size:.76rem;color:var(--muted2);line-height:1.65;margin-bottom:16px}
+.warnbox strong{color:var(--amber)}
+
+/* ── PILL ── */
+.pill{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:4px;font-family:var(--font-mono);font-size:.65rem;font-weight:700;letter-spacing:.06em}
+.pill.ok{background:rgba(0,230,118,.1);color:var(--green2);border:1px solid rgba(0,230,118,.25)}
+.pill.err{background:rgba(255,82,82,.1);color:var(--red);border:1px solid rgba(255,82,82,.25)}
+.pill.warn{background:rgba(255,179,0,.08);color:var(--amber);border:1px solid rgba(255,179,0,.25)}
+.pill.testing{background:rgba(68,138,255,.1);color:#90caf9;border:1px solid rgba(68,138,255,.25)}
+
+/* ── TOGGLE ── */
+.toggle{display:flex;background:#0a0f14;border:1px solid var(--border2);border-radius:8px;padding:3px;margin-bottom:18px}
+.tog{flex:1;padding:8px;border-radius:6px;border:none;font-size:.74rem;font-weight:600;cursor:pointer;font-family:var(--font-body);color:var(--muted);background:transparent;transition:all .2s}
+.tog.active{background:var(--green);color:var(--black);font-weight:700;box-shadow:0 2px 10px rgba(0,230,118,.3)}
+
+/* ── DROPZONE ── */
+.dropzone{border:1.5px dashed rgba(0,230,118,.2);border-radius:10px;padding:24px 16px;text-align:center;cursor:pointer;position:relative;background:rgba(0,230,118,.02);transition:all .2s;overflow:visible}
+.dropzone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.dropzone:hover,.dropzone.over{border-color:var(--green);background:var(--green4);box-shadow:inset 0 0 24px rgba(0,230,118,.05)}
+.dropzone.done{border-style:solid;border-color:var(--green);background:rgba(0,230,118,.04)}
+.dz-icon{font-size:2rem;display:block;margin-bottom:8px;transition:transform .3s;line-height:1.2}
+.dropzone:hover .dz-icon{transform:translateY(-3px)}
+.dz-title{font-family:var(--font-head);font-size:.86rem;font-weight:700;letter-spacing:.08em;margin-bottom:4px}
+.dz-sub{font-size:.68rem;color:var(--muted2)}
+.logo-drop{border:1.5px dashed rgba(0,230,118,.2);border-radius:10px;min-height:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;cursor:pointer;position:relative;background:rgba(0,230,118,.02);text-align:center;padding:16px;transition:all .2s}
+.logo-drop input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.logo-drop:hover{border-color:var(--green);background:var(--green4)}
+.logo-drop.done{border-style:solid;border-color:var(--green);background:rgba(0,230,118,.04)}
+
+/* ── LOGO PREVIEW ── */
+.logo-prev{background:#0a0f14;border:1px solid var(--border);border-radius:10px;padding:14px}
+.prev-row{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--border)}
+.prev-row:last-child{border-bottom:none}
+.prev-box{width:34px;height:34px;border-radius:7px;flex-shrink:0;background:var(--card2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:.9rem;overflow:hidden}
+.prev-box.white{background:#fff}
+.prev-lbl{font-size:.7rem;color:var(--muted2)}
+
+/* ── PREVIEW TABLE ── */
+.pvtbl{background:#0a0f14;border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:16px}
+.pvrow{display:flex;justify-content:space-between;align-items:center;padding:8px 14px;border-bottom:1px solid var(--border);font-size:.76rem}
+.pvrow:last-child{border-bottom:none}
+.pvlbl{color:var(--muted2);font-weight:500}
+.pvval{font-family:var(--font-mono);font-size:.68rem;color:var(--blue)}
+.pvval.ok{color:var(--green2)}
+.pvval.warn{color:var(--amber)}
+
+/* ── FILE LIST ── */
+.ftbl{background:#0a0f14;border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.frow{display:flex;justify-content:space-between;align-items:center;padding:8px 14px;border-bottom:1px solid var(--border);font-size:.75rem}
+.frow:last-child{border-bottom:none}
+.fname{font-family:var(--font-mono);color:var(--text)}
+.fst{font-family:var(--font-mono);font-size:.63rem;font-weight:700;letter-spacing:.06em}
+.fst.ok{color:var(--green2)}.fst.auto{color:var(--blue)}.fst.img{color:#ce93d8}.fst.warn{color:var(--amber)}
+
+/* ── PROGRESS ── */
+.prog-wrap{margin:16px 0;display:none}
+.prog-head{display:flex;justify-content:space-between;margin-bottom:7px;font-family:var(--font-mono);font-size:.67rem;color:var(--muted2)}
+.prog-track{background:#0a0f14;border-radius:2px;height:4px;overflow:hidden;border:1px solid var(--border)}
+.prog-bar{height:100%;width:0%;border-radius:2px;transition:width .4s ease;background:linear-gradient(90deg,var(--green),var(--green2),var(--amber));background-size:200% 100%;animation:progAnim 1.5s linear infinite;box-shadow:0 0 8px rgba(0,230,118,.4)}
+@keyframes progAnim{0%{background-position:0}100%{background-position:200%}}
+
+/* ── GEN BUTTON ── */
+.btn-gen{width:100%;padding:15px;border-radius:10px;border:none;font-family:var(--font-head);font-size:.9rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;cursor:pointer;background:var(--green);color:var(--black);box-shadow:0 0 0 1px var(--green),0 6px 24px rgba(0,230,118,.25);display:flex;align-items:center;justify-content:center;gap:10px;transition:all .3s cubic-bezier(.34,1.56,.64,1);position:relative;overflow:hidden}
+.btn-gen::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.25),transparent);transform:translateX(-100%);transition:transform .5s}
+.btn-gen:hover{transform:translateY(-2px);box-shadow:0 0 0 1px var(--green),0 12px 40px rgba(0,230,118,.4);background:var(--green2)}
+.btn-gen:hover::after{transform:translateX(100%)}
+.btn-gen:disabled{background:var(--card2);color:var(--muted);box-shadow:none;cursor:not-allowed;transform:none}
+
+/* ── RESULT ── */
+.result{display:none;background:var(--card);border:1px solid rgba(0,230,118,.3);border-radius:12px;padding:32px 24px;text-align:center;margin-bottom:12px;position:relative;overflow:hidden;animation:fadeInUp .5s ease both}
+.result::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--green),var(--green2),transparent);box-shadow:0 0 12px var(--green)}
+.result-icon{width:60px;height:60px;border-radius:14px;margin:0 auto 16px;background:var(--green);display:flex;align-items:center;justify-content:center;font-size:1.7rem;box-shadow:0 0 0 8px rgba(0,230,118,.1),0 0 32px rgba(0,230,118,.25);animation:iconPop .6s cubic-bezier(.34,1.56,.64,1) both;flex-shrink:0}
+@keyframes iconPop{from{transform:scale(0) rotate(-10deg);opacity:0}to{transform:scale(1) rotate(0);opacity:1}}
+.result-title{font-family:var(--font-head);font-size:1.5rem;font-weight:700;letter-spacing:.04em;margin-bottom:6px}
+.result-sub{font-size:.8rem;color:var(--muted2);margin-bottom:20px;line-height:1.7}
+.dl-btn{display:flex;align-items:center;justify-content:space-between;background:var(--green4);border:1.5px solid rgba(0,230,118,.3);border-radius:10px;padding:14px 18px;text-decoration:none;cursor:pointer;max-width:400px;margin:0 auto 16px;transition:all .2s}
+.dl-btn:hover{background:rgba(0,230,118,.1);border-color:var(--green);box-shadow:0 6px 24px rgba(0,230,118,.15);transform:translateY(-2px)}
+.dl-fname{font-family:var(--font-head);font-weight:700;font-size:.88rem;color:var(--green2);letter-spacing:.04em}
+.dl-fsub{font-size:.68rem;color:var(--muted2);margin-top:2px}
+.checklist{text-align:left;background:#0a0f14;border:1px solid var(--border);border-radius:10px;padding:14px 18px;margin:0 0 16px}
+.chk{display:flex;align-items:flex-start;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);font-size:.76rem;color:var(--muted2);line-height:1.55}
+.chk:last-child{border-bottom:none}
+.chk-n{width:20px;height:20px;border-radius:5px;flex-shrink:0;margin-top:1px;background:var(--green);color:var(--black);display:flex;align-items:center;justify-content:center;font-size:.62rem;font-weight:700;font-family:var(--font-head)}
+.res-btns{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+
+/* ── LICENSE KEY DISPLAY ── */
+.key-box{background:#0a0f14;border:1.5px solid rgba(0,230,118,.3);border-radius:10px;padding:14px 18px;font-family:var(--font-mono);font-size:.95rem;color:var(--green);letter-spacing:.15em;text-align:center;cursor:pointer;margin-bottom:14px;transition:all .2s}
+.key-box:hover{border-color:var(--green);box-shadow:0 0 20px rgba(0,230,118,.15)}
+
+/* ── DAYS BAR ── */
+.days-bar{display:flex;align-items:center;gap:8px}
+.days-text{font-family:var(--font-mono);font-size:.72rem;font-weight:700;min-width:64px}
+.bar-track{flex:1;height:4px;background:rgba(255,255,255,.07);border-radius:99px;overflow:hidden}
+.bar-fill{height:100%;border-radius:99px}
+
+/* ── VER BADGE ── */
+.ver-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:4px;font-family:var(--font-mono);font-size:.65rem;font-weight:700;letter-spacing:.06em;margin-top:8px}
+.ver-badge.ok{background:rgba(0,230,118,.1);color:var(--green2);border:1px solid rgba(0,230,118,.25)}
+.ver-badge.warn{background:rgba(255,179,0,.08);color:var(--amber);border:1px solid rgba(255,179,0,.25)}
+
+/* ── MODAL ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(4px);z-index:500;display:none;align-items:center;justify-content:center;padding:16px}
+.modal-overlay.open{display:flex}
+.modal{background:var(--card);border:1px solid var(--border2);border-radius:16px;padding:26px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;animation:fadeInDown .2s ease both}
+.modal-title{font-family:var(--font-head);font-size:1rem;font-weight:700;letter-spacing:.04em;margin-bottom:18px}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:8px}
+
+/* ── EMPTY ── */
+.empty{text-align:center;padding:50px 20px;color:var(--muted)}
+.empty-icon{font-size:2.2rem;margin-bottom:10px}
+.empty-text{font-size:.82rem}
+
+/* ── SEARCH ── */
+.search-box{background:#0a0f14;border:1.5px solid var(--border2);color:var(--text);border-radius:8px;padding:7px 12px;font-size:.78rem;font-family:var(--font-body);outline:none;width:180px;transition:border-color .2s}
+.search-box:focus{border-color:var(--green)}
+
+/* ── BTN TEST ── */
+.btn-test{display:inline-flex;align-items:center;gap:6px;background:rgba(0,230,118,.07);border:1px solid rgba(0,230,118,.2);color:var(--green2);border-radius:7px;padding:7px 16px;font-size:.75rem;font-weight:600;cursor:pointer;font-family:var(--font-body);transition:all .2s;margin-top:8px}
+.btn-test:hover{background:rgba(0,230,118,.14);border-color:var(--green);box-shadow:0 0 14px rgba(0,230,118,.12)}
+.btn-test:disabled{opacity:.4;cursor:not-allowed}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(100px);background:var(--card2);border:1px solid rgba(0,230,118,.3);color:var(--green2);padding:9px 20px;border-radius:8px;font-size:.76rem;font-weight:600;z-index:9999;transition:transform .3s cubic-bezier(.2,.8,.3,1);white-space:nowrap;font-family:var(--font-mono);box-shadow:0 8px 32px rgba(0,0,0,.6),0 0 20px rgba(0,230,118,.08)}
+.toast.show{transform:translateX(-50%) translateY(0)}
+.toast.err{border-color:rgba(255,82,82,.35);color:var(--red)}
+
+/* ── TRACKER (generator) ── */
+.tracker{display:flex;align-items:stretch;margin-bottom:28px;gap:0;background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.tr-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;padding:12px 6px;position:relative;cursor:default;border-right:1px solid var(--border);transition:background .3s}
+.tr-item:last-child{border-right:none}
+.tr-item.active{background:var(--green4)}
+.tr-item.done{background:rgba(0,230,118,.02)}
+.tr-num{width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:var(--font-head);font-size:.76rem;font-weight:700;border:1.5px solid var(--border2);color:var(--muted);transition:all .35s cubic-bezier(.34,1.56,.64,1)}
+.tr-item.active .tr-num{border-color:var(--green);color:var(--black);background:var(--green);box-shadow:0 0 14px rgba(0,230,118,.4)}
+.tr-item.done .tr-num{border-color:var(--green);color:var(--green)}
+.tr-lbl{font-family:var(--font-head);font-size:.56rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);white-space:nowrap;transition:color .3s}
+.tr-item.active .tr-lbl{color:var(--green2)}
+.tr-item.active::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--green);box-shadow:0 0 6px var(--green)}
+
+/* ══════════════════════════════════
+   RESPONSIVE
+══════════════════════════════════ */
+@media(max-width:900px){
+  .sidebar{width:52px}
+  .s-header,.s-logo,.s-sub,.s-meta,.nav-btn span:not(.nav-icon),.s-footer .nav-btn span:not(.nav-icon){display:none}
+  .s-nav{padding:8px 4px}
+  .nav-btn{justify-content:center;padding:10px}
+  .nav-btn.active::before{top:0;bottom:0;left:0;right:auto;width:2px}
+  .main{margin-left:52px}
+  .stats-row{grid-template-columns:1fr 1fr}
+  .page{padding:20px 14px 60px}
+}
+@media(max-width:600px){
+  .g2,.g3{grid-template-columns:1fr}
+  .stats-row{grid-template-columns:1fr 1fr}
+  .page{padding:16px 12px 60px}
+  .search-box{width:130px}
+  .tr-lbl{font-size:.5rem}
+  .toast{left:10px;right:10px;transform:translateY(100px);white-space:normal;text-align:center}
+  .toast.show{transform:translateY(0)}
+}
+
+/* ── ORDERS PAGE ── */
+.order-logo-thumb{width:36px;height:36px;border-radius:6px;object-fit:cover;border:1px solid var(--border2);cursor:pointer;transition:.2s}
+.order-logo-thumb:hover{transform:scale(1.1)}
+.status-pill{display:inline-flex;align-items:center;gap:4px;font-size:.62rem;font-weight:700;font-family:var(--font-mono);padding:3px 8px;border-radius:20px;}
+.pill-pending  {background:rgba(255,179,0,.12); color:var(--amber);  border:1px solid rgba(255,179,0,.25);}
+.pill-confirmed{background:rgba(0,230,118,.12); color:var(--green);  border:1px solid rgba(0,230,118,.25);}
+.pill-rejected {background:rgba(255,82,82,.12); color:var(--red);    border:1px solid rgba(255,82,82,.25);}
+.order-action-btn{font-size:.6rem;font-weight:700;font-family:var(--font-mono);padding:4px 10px;border-radius:6px;border:none;cursor:pointer;transition:.15s}
+.btn-confirm{background:rgba(0,230,118,.15);color:var(--green);border:1px solid rgba(0,230,118,.3)}
+.btn-confirm:hover{background:rgba(0,230,118,.25)}
+.btn-reject{background:rgba(255,82,82,.1);color:var(--red);border:1px solid rgba(255,82,82,.25)}
+.btn-reject:hover{background:rgba(255,82,82,.2)}
+.btn-tolip{background:rgba(68,138,255,.1);color:var(--blue);border:1px solid rgba(68,138,255,.25)}
+.btn-tolip:hover{background:rgba(68,138,255,.2)}
+.logo-modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;align-items:center;justify-content:center}
+.logo-modal-overlay.open{display:flex}
+.logo-modal-img{max-width:90vw;max-height:85vh;border-radius:12px;border:1px solid var(--border2)}
+</style>
+</head>
+<body>
+<div class="bg-grid"></div>
+<div class="glow-tl"></div>
+<div class="glow-br"></div>
+
+<!-- ══════════════════════════════════
+     LOGIN
+══════════════════════════════════ -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">KASIRPRO</div>
+    <div class="login-version">// ADMIN PANEL v4.0 — SELLER ONLY</div>
+    <label class="login-label">Password Admin</label>
+    <input type="password" class="login-input" id="login-pass" placeholder="masukkan password" onkeydown="if(event.key==='Enter')doLogin()">
+    <button class="login-btn" onclick="doLogin()">MASUK →</button>
+    <div class="login-err" id="login-err">// ERROR: password salah</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════
+     APP
+══════════════════════════════════ -->
+<div id="app">
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="s-header">
+      <div class="s-logo">KASIRPRO</div>
+      <div class="s-sub">// ADMIN PANEL</div>
+      <div class="s-meta"><div class="s-dot"></div><span class="s-online" id="s-online-txt">connecting...</span></div>
+    </div>
+    <div class="s-nav">
+      <button class="nav-btn active" onclick="showPage('dashboard')" id="nav-dashboard">
+        <span class="nav-icon">📊</span><span>Dashboard</span>
+      </button>
+      <button class="nav-btn" onclick="showPage('orders');loadOrders();" id="nav-orders">
+        <span class="nav-icon">📋</span><span>Orders</span>
+        <span class="nav-badge" id="badge-orders" style="display:none">0</span>
+      </button>
+      <button class="nav-btn" onclick="showPage('pembeli')" id="nav-pembeli">
+        <span class="nav-icon">👥</span><span>Pembeli (Jual Putus)</span>
+      </button>
+      <button class="nav-btn" onclick="showPage('tenants');loadTenants();" id="nav-tenants">
+        <span class="nav-icon">🏢</span><span>Tenants (Langganan)</span>
+        <span class="nav-badge" id="badge-tenants" style="display:none">0</span>
+      </button>
+      <button class="nav-btn" onclick="showPage('expired')" id="nav-expired">
+        <span class="nav-icon">⚠️</span><span>Akan Expired</span>
+        <span class="nav-badge" id="badge-expired">0</span>
+      </button>
+      <button class="nav-btn" onclick="showPage('provisioning')" id="nav-provisioning">
+        <span class="nav-icon">🚀</span><span>Provisioning</span>
+      </button>
+      <button class="nav-btn" onclick="showPage('generator')" id="nav-generator">
+        <span class="nav-icon">⚡</span><span>Generator (Jual Putus)</span>
+      </button>
+      <button class="nav-btn" onclick="showPage('pengaturan')" id="nav-pengaturan">
+        <span class="nav-icon">⚙️</span><span>Pengaturan</span>
+      </button>
+    </div>
+    <div class="s-footer">
+      <button class="nav-btn" onclick="doLogout()">
+        <span class="nav-icon">🚪</span><span>Keluar</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- ── DASHBOARD ── -->
+    <div class="page active" id="page-dashboard">
+      <div class="page-header">
+        <div class="page-title">DASHBOARD</div>
+        <div class="page-sub">// ringkasan bisnis hari ini</div>
+      </div>
+      <div class="stats-row">
+        <div class="stat-card green"><div class="stat-lbl">Total Pembeli</div><div class="stat-val" id="st-total">—</div><div class="stat-sub">semua paket</div></div>
+        <div class="stat-card green"><div class="stat-lbl">Aktif</div><div class="stat-val" id="st-aktif">—</div><div class="stat-sub">lisensi berjalan</div></div>
+        <div class="stat-card amber"><div class="stat-lbl">Hampir Expired</div><div class="stat-val" id="st-warn">—</div><div class="stat-sub">≤ 14 hari</div></div>
+        <div class="stat-card red"><div class="stat-lbl">Expired</div><div class="stat-val" id="st-exp">—</div><div class="stat-sub">perlu perpanjang</div></div>
+      </div>
+      <div class="tbl-wrap">
+        <div class="tbl-head"><div class="tbl-head-title">⚠️ SEGERA EXPIRED ( ≤ 14 HARI )</div></div>
+        <table><thead><tr><th>Toko</th><th>WA</th><th>Paket</th><th>Sisa</th><th>Aksi</th></tr></thead>
+        <tbody id="tbody-dash"></tbody></table>
+      </div>
+    </div>
+
+    <!-- ── PEMBELI ── -->
+    <!-- ── ORDERS ── -->
+    <div class="page" id="page-orders">
+      <div class="page-header">
+        <div class="page-title">ORDERS MASUK</div>
+        <div class="page-sub">// kelola semua pesanan dari form pembeli</div>
+      </div>
+      <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
+        <button class="btn-primary" onclick="loadOrders()">↻ REFRESH</button>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn-sec" onclick="filterOrders('all')" id="flt-all" style="border-color:var(--green);color:var(--green)">Semua</button>
+          <button class="btn-sec" onclick="filterOrders('pending')" id="flt-pending">⏳ Pending</button>
+          <button class="btn-sec" onclick="filterOrders('confirmed')" id="flt-confirmed">✅ Confirmed</button>
+          <button class="btn-sec" onclick="filterOrders('rejected')" id="flt-rejected">❌ Rejected</button>
+        </div>
+      </div>
+      <div id="orders-loading" style="text-align:center;padding:40px;color:var(--muted2);display:none">// memuat orders...</div>
+      <div class="tbl-wrap">
+        <table id="orders-table">
+          <thead><tr>
+            <th>Order ID</th>
+            <th>Nama Usaha</th>
+            <th>Alamat</th>
+            <th>No. Telp</th>
+            <th>Pemilik</th>
+            <th>WA</th>
+            <th>Logo</th>
+            <th>Catatan</th>
+            <th>Waktu</th>
+            <th>Status</th>
+            <th>Aksi</th>
+          </tr></thead>
+          <tbody id="tbody-orders"></tbody>
+        </table>
+        <div class="empty" id="empty-orders" style="display:none">
+          <div class="empty-icon">📋</div>
+          <div class="empty-text">Belum ada orders masuk</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="page" id="page-pembeli">
+      <div class="page-header">
+        <div class="page-title">DAFTAR PEMBELI</div>
+        <div class="page-sub">// kelola semua lisensi aktif</div>
+      </div>
+      <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
+        <button class="btn-primary" onclick="openModalTambah()">+ TAMBAH PEMBELI</button>
+        <input class="search-box" id="search-pembeli" placeholder="🔍 cari nama / WA…" oninput="renderTablePembeli()">
+      </div>
+      <div class="tbl-wrap">
+        <table><thead><tr><th>Nama Toko</th><th>Pemilik</th><th>WA</th><th>Paket</th><th>Status</th><th>Expired</th><th>Key</th><th>Aksi</th></tr></thead>
+        <tbody id="tbody-pembeli"></tbody></table>
+        <div class="empty" id="empty-pembeli" style="display:none"><div class="empty-icon">👥</div><div class="empty-text">Belum ada pembeli</div></div>
+      </div>
+    </div>
+
+    <!-- ── TENANTS (MULTI-TENANT LANGGANAN) ── -->
+    <div class="page" id="page-tenants">
+      <div class="page-header">
+        <div class="page-title">DAFTAR TENANT</div>
+        <div class="page-sub">// semua customer langganan multi-tenant — kelola status & masa aktif</div>
+      </div>
+      <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
+        <input class="search-box" id="search-tenants" placeholder="🔍 cari nama usaha / slug…" oninput="renderTenants()">
+        <select class="finput" id="filter-tenants" style="width:auto" onchange="renderTenants()">
+          <option value="all">Semua Status</option>
+          <option value="active">✅ Aktif</option>
+          <option value="expiring">⚠️ Akan Expired (≤14 hari)</option>
+          <option value="expired">❌ Expired</option>
+          <option value="suspended">⛔ Nonaktif (di-suspend)</option>
+        </select>
+        <button class="nav-btn" style="width:auto;padding:10px 16px" onclick="loadTenants()">↺ Refresh</button>
+      </div>
+      <div class="tbl-wrap">
+        <table><thead><tr><th>Nama Usaha</th><th>Slug</th><th>Owner</th><th>Paket</th><th>Sisa Hari</th><th>Status</th><th>Aksi</th></tr></thead>
+        <tbody id="tbody-tenants"></tbody></table>
+        <div class="empty" id="empty-tenants" style="display:none"><div class="empty-icon">🏢</div><div class="empty-text">Belum ada tenant. Bikin lewat tab Provisioning.</div></div>
+      </div>
+    </div>
+
+    <!-- ── AKAN EXPIRED ── -->
+    <div class="page" id="page-expired">
+      <div class="page-header">
+        <div class="page-title">AKAN EXPIRED</div>
+        <div class="page-sub">// pembeli yang perlu diperpanjang</div>
+      </div>
+      <div class="tbl-wrap">
+        <table><thead><tr><th>Nama Toko</th><th>WA</th><th>Paket</th><th>Sisa Hari</th><th>Aksi</th></tr></thead>
+        <tbody id="tbody-exp-page"></tbody></table>
+        <div class="empty" id="empty-exp-page" style="display:none"><div class="empty-icon">✅</div><div class="empty-text">Tidak ada yang hampir expired!</div></div>
+      </div>
+    </div>
+
+    <!-- ── PROVISIONING (MULTI-TENANT) ── -->
+    <div class="page" id="page-provisioning">
+      <div class="page-header">
+        <div class="page-title">PROVISIONING TENANT BARU</div>
+        <div class="page-sub">// bikin akun login + business baru — TANPA file, TANPA download, langsung aktif</div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <span class="step-badge">🚀</span>
+          <div>
+            <div class="card-title">Data Tenant Baru</div>
+            <div class="card-sub">Customer cukup dikasih link app + email/password ini, tidak perlu install apa pun</div>
+          </div>
+        </div>
+        <div class="card-body">
+
+          <div class="infobox" id="prov-order-info" style="display:none">
+            📋 Diisi otomatis dari order <b id="prov-order-id-label"></b> — field yang dikosongkan akan otomatis terisi dari data order (termasuk logo).
+          </div>
+
+          <div class="g2">
+            <div class="field">
+              <label class="flabel">Nama Usaha</label>
+              <input class="finput" id="prov-nama-usaha" placeholder="Kosongkan jika sudah ada dari order">
+              <div class="fhint">Wajib diisi kalau TIDAK dari order</div>
+            </div>
+            <div class="field">
+              <label class="flabel">Nama Owner</label>
+              <input class="finput" id="prov-owner-nama" placeholder="Kosongkan jika sudah ada dari order">
+            </div>
+            <div class="field">
+              <label class="flabel">Email Owner <span class="req">*</span></label>
+              <input class="finput" id="prov-owner-email" type="email" placeholder="email@usaha.com">
+              <div class="fhint">Wajib — dipakai login. Tanyakan ke customer lewat WA kalau order tidak menyertakan email.</div>
+            </div>
+            <div class="field">
+              <label class="flabel">Password Owner</label>
+              <input class="finput" id="prov-owner-password" placeholder="Kosongkan untuk generate otomatis">
+            </div>
+            <div class="field">
+              <label class="flabel">Paket <span class="req">*</span></label>
+              <select class="finput" id="prov-plan" onchange="provUpdateExpiryVisibility()">
+                <option value="trial">Trial</option>
+                <option value="3_bulan">3 Bulan</option>
+                <option value="6_bulan">6 Bulan</option>
+                <option value="1_tahun">1 Tahun</option>
+                <option value="unlimited">Unlimited</option>
+                <option value="kustom">Kustom</option>
+              </select>
+            </div>
+            <div class="field" id="prov-expiry-field">
+              <label class="flabel">Tanggal Expired</label>
+              <input class="finput" id="prov-expires-at" type="date">
+              <div class="fhint">Kosongkan untuk auto-hitung dari paket (mis. Trial = 14 hari dari sekarang)</div>
+            </div>
+          </div>
+
+          <input type="hidden" id="prov-source-order-id">
+
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:8px">
+            <button class="btn-test" id="prov-submit-btn" onclick="submitProvisioning()">🚀 Provision Tenant Baru</button>
+            <button class="nav-btn" style="width:auto;padding:10px 16px" onclick="resetProvisioningForm()">↺ Reset Form</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Hasil -->
+      <div class="card" id="prov-result-card" style="display:none">
+        <div class="card-head">
+          <span class="step-badge" style="background:var(--green3);color:var(--green)">✓</span>
+          <div>
+            <div class="card-title">Tenant Berhasil Dibuat!</div>
+            <div class="card-sub">Kirim kredensial ini ke customer</div>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="infobox" id="prov-result-box" style="font-family:var(--font-mono);font-size:13px;line-height:1.9"></div>
+          <div style="display:flex;gap:12px;margin-top:14px;flex-wrap:wrap">
+            <button class="btn-test" onclick="copyProvResult()">📋 Copy Kredensial</button>
+            <a id="prov-wa-btn" href="#" target="_blank" class="btn-test" style="background:var(--green);color:#000;text-decoration:none;display:inline-flex;align-items:center">📲 Kirim via WhatsApp</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── GENERATOR ── -->
+    <div class="page" id="page-generator">
+      <div class="page-header">
+        <div class="page-title">GENERATOR APP</div>
+        <div class="page-sub">// generate app kasir + simpan lisensi otomatis</div>
+      </div>
+
+      <!-- TRACKER -->
+      <div class="tracker">
+        <div class="tr-item active" id="tr-1"><div class="tr-num" id="snum-1">1</div><div class="tr-lbl" id="slbl-1">Upload</div></div>
+        <div class="tr-item" id="tr-2"><div class="tr-num" id="snum-2">2</div><div class="tr-lbl" id="slbl-2">Pembeli</div></div>
+        <div class="tr-item" id="tr-3"><div class="tr-num" id="snum-3">3</div><div class="tr-lbl" id="slbl-3">Identitas</div></div>
+        <div class="tr-item" id="tr-4"><div class="tr-num" id="snum-4">4</div><div class="tr-lbl" id="slbl-4">Supabase</div></div>
+        <div class="tr-item" id="tr-5"><div class="tr-num" id="snum-5">5</div><div class="tr-lbl" id="slbl-5">Password</div></div>
+        <div class="tr-item" id="tr-6"><div class="tr-num" id="snum-6">6</div><div class="tr-lbl" id="slbl-6">Generate</div></div>
+      </div>
+
+      <!-- STEP 1: UPLOAD MASTER -->
+      <div class="card" id="step-1">
+        <div class="card-head"><span class="step-badge">STEP_01</span><div><div class="card-title">Upload File App Master</div><div class="card-sub">index_secure.html — template master, jangan bagikan ke client</div></div></div>
+        <div class="card-body">
+          <div class="dropzone" id="uz-app">
+            <input type="file" id="fi-app" accept=".html" onchange="handleAppUpload(this)">
+            <span class="dz-icon" id="uz-app-icon">📄</span>
+            <div class="dz-title" id="uz-app-title">Klik atau drag &amp; drop di sini</div>
+            <div class="dz-sub" id="uz-app-sub">index_secure.html · maks 15MB</div>
+          </div>
+          <div id="app-upload-info"></div>
+        </div>
+      </div>
+
+      <!-- STEP 2: DATA PEMBELI (BARU!) -->
+      <div class="card locked" id="step-2">
+        <div class="card-head"><span class="step-badge">STEP_02</span><div><div class="card-title">Data Pembeli &amp; Lisensi</div><div class="card-sub">Otomatis tersimpan ke database lisensi kamu</div></div></div>
+        <div class="card-body">
+          <div class="infobox">Data ini akan <strong>otomatis disimpan ke tabel lisensi</strong> saat kamu klik Generate. License key akan di-embed ke dalam app yang di-generate.</div>
+          <div class="g2">
+            <div class="field"><label class="flabel">Nama Pemilik <span class="req">*</span></label><input type="text" class="finput txt" id="f-owner-name" placeholder="Budi Santoso" oninput="updatePreview()"></div>
+            <div class="field"><label class="flabel">Nomor WhatsApp <span class="req">*</span></label><input type="text" class="finput" id="f-wa" placeholder="628123456789" oninput="updatePreview()"></div>
+          </div>
+          <div class="g2">
+            <div class="field">
+              <label class="flabel">Paket <span class="req">*</span></label>
+              <select class="finput txt" id="f-plan" onchange="updateExpiry();showHargaHint()">
+                <option value="3_bulan">3 Bulan</option>
+                <option value="6_bulan">6 Bulan</option>
+                <option value="1_tahun">1 Tahun</option>
+                <option value="unlimited">Unlimited ♾️</option>
+                <option value="kustom">Kustom (atur manual)</option>
+              </select>
+              <div id="harga-hint" style="margin-top:6px;font-size:.75rem;color:#10b981;font-weight:600;min-height:18px"></div>
+            </div>
+            <div class="field"><label class="flabel">Tanggal Mulai</label><input type="date" class="finput" id="f-start" oninput="updateExpiry()"></div>
+          </div>
+          <div class="field" id="wrap-f-custom-exp" style="display:none"><label class="flabel">Tanggal Expired (manual) <span class="req">*</span></label><input type="date" class="finput" id="f-custom-exp" oninput="updateExpiry()"><div class="fhint">Khusus paket Kustom — atur sendiri tanggal berakhirnya lisensi</div></div>
+          <div class="field"><label class="flabel">URL Deploy (opsional)</label><input type="text" class="finput" id="f-deploy-url" placeholder="tokobudi.kasirpro.com" oninput="updatePreview()"><div class="fhint">Isi setelah deploy ke Cloudflare, atau kosongkan dulu</div></div>
+          <div id="expiry-preview" style="font-family:var(--font-mono);font-size:.72rem;color:var(--green2);margin-top:8px"></div>
+        </div>
+      </div>
+
+      <!-- STEP 3: IDENTITAS -->
+      <div class="card locked" id="step-3">
+        <div class="card-head"><span class="step-badge">STEP_03</span><div><div class="card-title">Identitas Usaha &amp; Logo</div><div class="card-sub">Nama + logo akan replace semua teks &amp; icon di seluruh app</div></div></div>
+        <div class="card-body">
+          <div class="sec">Nama Usaha</div>
+          <div class="g2">
+            <div class="field"><label class="flabel">Nama Lengkap <span class="req">*</span></label><input type="text" class="finput txt" id="f-biz-name" placeholder="Salon Ayu Cantik" oninput="updatePreview()"><div class="fhint">Muncul di semua halaman, laporan &amp; struk</div></div>
+            <div class="field"><label class="flabel">Nama Singkat PWA <span class="req">*</span></label><input type="text" class="finput txt" id="f-short-name" placeholder="Salon Ayu" oninput="updatePreview()" maxlength="20"><div class="fhint">Nama icon di HP · maks 20 karakter</div></div>
+          </div>
+          <div class="g2">
+            <div class="field"><label class="flabel">Alamat</label><input type="text" class="finput txt" id="f-address" placeholder="Jl. Contoh No.1, Jakarta" oninput="updatePreview()"><div class="fhint">Muncul di struk thermal</div></div>
+            <div class="field"><label class="flabel">Nomor Telepon</label><input type="text" class="finput txt" id="f-phone" placeholder="0812-3456-7890" oninput="updatePreview()"><div class="fhint">Muncul di struk thermal</div></div>
+          </div>
+          <div class="sec">Logo &amp; Icon</div>
+          <div class="infobox">Upload <strong>1 file logo</strong> (PNG/JPG min 512×512px). Generator otomatis resize jadi semua ukuran — icon HP, sidebar app, struk thermal, favicon.</div>
+          <div class="g2">
+            <div>
+              <div class="logo-drop" id="uz-logo">
+                <input type="file" id="fi-logo" accept="image/*" onchange="handleLogoUpload(this)">
+                <div id="uz-logo-content">
+                  <div style="font-size:1.8rem;margin-bottom:6px">🖼️</div>
+                  <div style="font-family:var(--font-head);font-weight:700;font-size:.84rem;letter-spacing:.08em">UPLOAD LOGO</div>
+                  <div style="font-size:.67rem;color:var(--muted2);margin-top:4px">PNG · JPG · SVG<br>Min 512×512px</div>
+                </div>
+              </div>
+            </div>
+            <div class="logo-prev">
+              <div style="font-family:var(--font-mono);font-size:.56rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--green);margin-bottom:10px">// preview output</div>
+              <div class="prev-row"><div class="prev-box" id="prev-icon-192">📱</div><div class="prev-lbl">icon-192.png · HP icon</div></div>
+              <div class="prev-row"><div class="prev-box" id="prev-icon-sidebar">🖥️</div><div class="prev-lbl">logo.png · sidebar app</div></div>
+              <div class="prev-row"><div class="prev-box white" id="prev-icon-thermal">🖨️</div><div class="prev-lbl">logo-thermal.png · struk</div></div>
+              <div class="prev-row"><div class="prev-box" id="prev-icon-fav">🌐</div><div class="prev-lbl">favicon.png</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 4: SUPABASE PEMBELI -->
+      <div class="card locked" id="step-4">
+        <div class="card-head"><span class="step-badge">STEP_04</span><div><div class="card-title">Koneksi Supabase Pembeli</div><div class="card-sub">Project Supabase milik pembeli — bukan Supabase kamu</div></div></div>
+        <div class="card-body">
+          <div class="infobox">Buat project baru di <strong>supabase.com</strong> → jalankan <strong>setup-complete.sql</strong> → copy URL &amp; anon key ke sini.</div>
+          <div class="g2">
+            <div class="field"><label class="flabel">Project URL <span class="req">*</span></label><input type="url" class="finput" id="f-sb-url" placeholder="https://xxxx.supabase.co" oninput="updatePreview()"></div>
+            <div class="field"><label class="flabel">Anon Key <span class="req">*</span></label><input type="text" class="finput" id="f-sb-key" placeholder="eyJhbGciOi..." oninput="updatePreview()"><div class="fhint">Project Settings → API → anon public</div></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <button class="btn-test" id="btn-test" onclick="testSupabase()">⚡ Test Koneksi</button>
+            <div id="conn-status"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 5: PASSWORD -->
+      <div class="card locked" id="step-5">
+        <div class="card-head"><span class="step-badge">STEP_05</span><div><div class="card-title">Password Login Pembeli</div><div class="card-sub">Tulis plaintext — otomatis di-hash SHA-256</div></div></div>
+        <div class="card-body">
+          <div class="toggle">
+            <button class="tog active" id="mode-cloud" onclick="setPassMode('cloud')">☁ Simpan ke Cloud (Rekomendasi)</button>
+            <button class="tog" id="mode-embed" onclick="setPassMode('embed')">⬡ Embed di HTML</button>
+          </div>
+          <div class="g3">
+            <div class="field"><label class="flabel">Password Owner <span class="req">*</span></label><input type="text" class="finput" id="f-owner-pass" placeholder="min 4 karakter (default: 1234)" oninput="updatePreview()"></div>
+            <div class="field"><label class="flabel">Password Kasir <span class="req">*</span></label><input type="text" class="finput" id="f-kasir-pass" placeholder="min 4 karakter" oninput="updatePreview()"></div>
+            <div class="field"><label class="flabel">PIN Reset Data</label><input type="text" class="finput" id="f-reset-pin" placeholder="kosong = random" oninput="updatePreview()" maxlength="8"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 6: PREVIEW & GENERATE -->
+      <div class="card locked" id="step-6">
+        <div class="card-head"><span class="step-badge">STEP_06</span><div><div class="card-title">Preview &amp; Generate ZIP</div><div class="card-sub">1 file ZIP + license key otomatis disimpan ke database</div></div></div>
+        <div class="card-body">
+          <div class="sec">Ringkasan</div>
+          <div class="pvtbl">
+            <div class="pvrow"><span class="pvlbl">Pemilik</span><span class="pvval" id="pv-owner">—</span></div>
+            <div class="pvrow"><span class="pvlbl">WA</span><span class="pvval" id="pv-wa">—</span></div>
+            <div class="pvrow"><span class="pvlbl">Paket</span><span class="pvval" id="pv-plan">—</span></div>
+            <div class="pvrow"><span class="pvlbl">Expired</span><span class="pvval" id="pv-exp">—</span></div>
+            <div class="pvrow"><span class="pvlbl">Nama Usaha</span><span class="pvval" id="pv-biz">—</span></div>
+            <div class="pvrow"><span class="pvlbl">Logo</span><span class="pvval" id="pv-logo">Belum diupload</span></div>
+            <div class="pvrow"><span class="pvlbl">Supabase URL</span><span class="pvval" id="pv-url">—</span></div>
+            <div class="pvrow"><span class="pvlbl">Mode Password</span><span class="pvval ok" id="pv-mode">☁ Cloud</span></div>
+            <div class="pvrow"><span class="pvlbl">Koneksi</span><span class="pvval" id="pv-conn">Belum ditest</span></div>
+          </div>
+          <div class="sec">File dalam ZIP</div>
+          <div class="ftbl">
+            <div class="frow"><span class="fname">index.html</span><span class="fst ok">// APP UTAMA + LICENSE KEY</span></div>
+            <div class="frow"><span class="fname">manifest.json</span><span class="fst auto">// AUTO-GENERATE</span></div>
+            <div class="frow"><span class="fname">sw.js</span><span class="fst auto">// AUTO-GENERATE</span></div>
+            <div class="frow"><span class="fname">_headers</span><span class="fst auto">// AUTO-GENERATE</span></div>
+            <div class="frow"><span class="fname">icon-192.png</span><span class="fst img" id="fl-icon192">// DARI LOGO</span></div>
+            <div class="frow"><span class="fname">icon-512.png</span><span class="fst img" id="fl-icon512">// DARI LOGO</span></div>
+            <div class="frow"><span class="fname">logo.png</span><span class="fst img" id="fl-logo">// DARI LOGO</span></div>
+            <div class="frow"><span class="fname">logo-thermal.png</span><span class="fst img" id="fl-thermal">// DARI LOGO</span></div>
+            <div class="frow"><span class="fname">favicon.png</span><span class="fst img" id="fl-ico">// DARI LOGO</span></div>
+            <div class="frow"><span class="fname">credentials.txt</span><span class="fst ok">// INFO LOGIN + LICENSE KEY</span></div>
+            <div class="frow"><span class="fname">bell.mp3</span><span class="fst warn">// UPLOAD MANUAL</span></div>
+          </div>
+          <p class="fhint" style="margin:8px 0 18px">⚠ <strong>bell.mp3</strong> tidak bisa di-bundle — copy manual ke folder hasil extract sebelum upload ke Cloudflare.</p>
+          <div class="prog-wrap" id="progress-wrap">
+            <div class="prog-head"><span id="progress-text">initializing...</span><span id="progress-pct">0%</span></div>
+            <div class="prog-track"><div class="prog-bar" id="progress-fill"></div></div>
+          </div>
+          <button class="btn-gen" id="btn-generate" onclick="generateZip()" disabled>
+            <span>⬇</span><span id="btn-gen-text">GENERATE &amp; DOWNLOAD ZIP</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- RESULT -->
+      <div class="result" id="result-card">
+        <div class="result-icon">🎉</div>
+        <div class="result-title">ZIP SIAP DEPLOY</div>
+        <div class="result-sub">File untuk <strong id="result-biz" style="color:var(--green2)">—</strong> berhasil dibundle.<br><span id="result-mode-msg"></span></div>
+        <div class="key-box" id="result-key" onclick="copyResultKey()" title="Klik untuk salin">—</div>
+        <a id="dl-zip" class="dl-btn" download>
+          <div><div class="dl-fname">⬇ DOWNLOAD ZIP</div><div class="dl-fsub" id="dl-zip-size">—</div></div>
+          <span style="font-size:1.3rem;color:var(--green)">→</span>
+        </a>
+        <div class="checklist">
+          <div class="chk"><div class="chk-n">1</div><span>Extract ZIP — kamu dapat folder berisi semua file</span></div>
+          <div class="chk"><div class="chk-n">2</div><span>Copy <strong style="color:var(--text)">bell.mp3</strong> ke folder hasil extract</span></div>
+          <div class="chk"><div class="chk-n">3</div><span>Cloudflare Pages → upload <strong style="color:var(--text)">semua isi folder</strong> (bukan foldernya)</span></div>
+          <div class="chk"><div class="chk-n">4</div><span>Cloudflare → Caching → <strong style="color:var(--text)">Purge Everything</strong></span></div>
+          <div class="chk"><div class="chk-n">5</div><span>Kirim URL + credentials.txt ke client via WhatsApp</span></div>
+        </div>
+        <div class="res-btns">
+          <button class="btn-sec" onclick="generateAnother()">+ Tenant Lain</button>
+          <button class="btn-sec g" onclick="openWA()">↗ Template WA</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── PENGATURAN ── -->
+    <div class="page" id="page-pengaturan">
+      <div class="page-header">
+        <div class="page-title">PENGATURAN</div>
+        <div class="page-sub">// konfigurasi sistem seller — simpan sebelum mulai pakai</div>
+      </div>
+
+      <!-- TRACKER PENGATURAN -->
+      <div class="tracker" style="margin-bottom:28px">
+        <div class="tr-item active" id="ptr-1"><div class="tr-num" id="pnum-1">1</div><div class="tr-lbl">Database</div></div>
+        <div class="tr-item" id="ptr-2"><div class="tr-num" id="pnum-2">2</div><div class="tr-lbl">Identitas</div></div>
+        <div class="tr-item" id="ptr-3"><div class="tr-num" id="pnum-3">3</div><div class="tr-lbl">Keamanan</div></div>
+        <div class="tr-item" id="ptr-4"><div class="tr-num" id="pnum-4">4</div><div class="tr-lbl">SQL Setup</div></div>
+      </div>
+
+      <!-- CFG STEP 1: SUPABASE SELLER -->
+      <div class="card" id="pcfg-1">
+        <div class="card-head">
+          <span class="step-badge">CFG_01</span>
+          <div>
+            <div class="card-title">Koneksi Database Seller</div>
+            <div class="card-sub">Supabase milikmu — tempat semua data lisensi pembeli disimpan</div>
+          </div>
+          <div id="cfg-conn-badge" style="margin-left:auto"></div>
+        </div>
+        <div class="card-body">
+          <div class="infobox">
+            Buat project Supabase khusus untuk kamu sebagai seller di <strong>supabase.com</strong>.<br>
+            <strong>Service Role Key</strong> digunakan dashboard admin ini (baca/tulis data lisensi).<br>
+            <strong>Anon Key</strong> digunakan app kasir pembeli untuk verifikasi lisensi — <em>wajib diisi agar lisensi terbaca</em>.
+          </div>
+          <div class="g2">
+            <div class="field">
+              <label class="flabel">Supabase URL <span class="req">*</span></label>
+              <input class="finput" id="cfg-url" placeholder="https://xxxx.supabase.co" oninput="cfgCheckReady()">
+              <div class="fhint">Project Settings → API → Project URL</div>
+            </div>
+            <div class="field">
+              <label class="flabel">Service Role Key <span class="req">*</span></label>
+              <input class="finput" id="cfg-key" type="password" placeholder="eyJhbGci...">
+              <div class="fhint">Project Settings → API → service_role (secret)</div>
+            </div>
+            <div class="field">
+              <label class="flabel">Anon Key <span class="req">*</span></label>
+              <input class="finput" id="cfg-anon" type="password" placeholder="eyJhbGci...">
+              <div class="fhint">Project Settings → API → anon public — digunakan app kasir untuk verifikasi lisensi</div>
+            </div>
+            <div class="field">
+              <label class="flabel">Admin Secret <span class="req">*</span></label>
+              <input class="finput" id="cfg-admin-secret" type="password" placeholder="string rahasia yang kamu set di Edge Function">
+              <div class="fhint">Sama persis dengan yang di-set lewat <code>supabase secrets set ADMIN_SECRET=...</code> — dipakai memanggil provision-business di tab Provisioning</div>
+            </div>
+            <div class="field">
+              <label class="flabel">Link App Kasir (multi-tenant)</label>
+              <input class="finput" id="cfg-app-url" placeholder="https://app.namadomainkamu.com">
+              <div class="fhint">1 link yang sama untuk SEMUA tenant — dikirim ke customer bareng email/password saat Provisioning</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <button class="btn-test" id="cfg-test-btn" onclick="testCfgConn()">⚡ Test Koneksi</button>
+            <div id="cfg-conn-status"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CFG STEP 2: IDENTITAS SELLER -->
+      <div class="card" id="pcfg-2">
+        <div class="card-head">
+          <span class="step-badge">CFG_02</span>
+          <div>
+            <div class="card-title">Identitas Seller</div>
+            <div class="card-sub">Ditampilkan di overlay expired app pembeli & template WA</div>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="g2">
+            <div class="field">
+              <label class="flabel">Nama Seller / Brand</label>
+              <input class="finput txt" id="cfg-brand" placeholder="KasirPro by Budi" oninput="cfgCheckReady()">
+              <div class="fhint">Muncul di overlay terkunci app pembeli</div>
+            </div>
+            <div class="field">
+              <label class="flabel">Nomor WhatsApp Seller <span class="req">*</span></label>
+              <input class="finput" id="cfg-wa" placeholder="628123456789" oninput="cfgCheckReady()">
+              <div class="fhint">Format internasional tanpa + · tombol "Hubungi Seller"</div>
+            </div>
+          </div>
+          <div class="g2">
+            <div class="field">
+              <label class="flabel">Jam Operasional</label>
+              <input class="finput txt" id="cfg-jam" placeholder="09.00–21.00 WIB" oninput="cfgCheckReady()">
+              <div class="fhint">Muncul di credentials.txt yang dikirim ke pembeli</div>
+            </div>
+            <div class="field">
+              <label class="flabel">Harga Paket (opsional)</label>
+              <input class="finput txt" id="cfg-harga" placeholder="3bln:150rb | 6bln:250rb | 1thn:400rb | unlimited:Harga | kustom:Nego" oninput="cfgCheckReady()">
+              <div class="fhint">Ditampilkan di halaman generator sebagai referensi harga paket</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CFG STEP 3: KEAMANAN -->
+      <div class="card" id="pcfg-3">
+        <div class="card-head">
+          <span class="step-badge">CFG_03</span>
+          <div>
+            <div class="card-title">Keamanan Dashboard</div>
+            <div class="card-sub">Password masuk ke halaman admin ini</div>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="warnbox">Password default: <strong>kasirpro2024</strong> — ubah segera setelah setup pertama!</div>
+          <div class="g2">
+            <div class="field">
+              <label class="flabel">Password Baru</label>
+              <input class="finput" id="cfg-pass" type="password" placeholder="Kosongkan jika tidak diubah">
+              <div class="fhint">Min 6 karakter</div>
+            </div>
+            <div class="field">
+              <label class="flabel">Konfirmasi Password</label>
+              <input class="finput" id="cfg-pass2" type="password" placeholder="Ulangi password baru">
+            </div>
+          </div>
+          <div id="pass-match-hint" style="font-family:var(--font-mono);font-size:.68rem;margin-top:-8px;margin-bottom:12px"></div>
+          <!-- PREVIEW -->
+          <div class="sec">Preview Konfigurasi</div>
+          <div class="pvtbl">
+            <div class="pvrow"><span class="pvlbl">Supabase URL</span><span class="pvval" id="cpv-url">—</span></div>
+            <div class="pvrow"><span class="pvlbl">Koneksi</span><span class="pvval" id="cpv-conn">Belum ditest</span></div>
+            <div class="pvrow"><span class="pvlbl">Brand Seller</span><span class="pvval ok" id="cpv-brand">—</span></div>
+            <div class="pvrow"><span class="pvlbl">WA Seller</span><span class="pvval ok" id="cpv-wa">—</span></div>
+            <div class="pvrow"><span class="pvlbl">Jam Operasional</span><span class="pvval" id="cpv-jam">—</span></div>
+            <div class="pvrow"><span class="pvlbl">Password</span><span class="pvval" id="cpv-pass">Tidak diubah</span></div>
+          </div>
+          <div class="prog-wrap" id="cfg-prog-wrap">
+            <div class="prog-head"><span id="cfg-prog-text">menyimpan...</span><span id="cfg-prog-pct">0%</span></div>
+            <div class="prog-track"><div class="prog-bar" id="cfg-prog-fill"></div></div>
+          </div>
+          <button class="btn-gen" id="cfg-save-btn" onclick="saveConfig()">
+            <span>💾</span><span id="cfg-save-txt">SIMPAN PENGATURAN</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- CFG STEP 4: SQL SETUP -->
+      <div class="card" id="pcfg-4">
+        <div class="card-head">
+          <span class="step-badge">CFG_04</span>
+          <div>
+            <div class="card-title">Setup Database — Jalankan Sekali</div>
+            <div class="card-sub">Buat tabel lisensi di Supabase seller kamu</div>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="warnbox">Jalankan SQL ini di <strong>Supabase Dashboard → SQL Editor → New Query → Paste → Run</strong>. Hanya perlu dilakukan <strong>sekali saja</strong>.</div>
+          <div style="background:#0a0f14;border:1px solid var(--border);border-radius:10px;padding:16px;font-family:var(--font-mono);font-size:.69rem;color:var(--muted2);white-space:pre-wrap;line-height:1.65;max-height:320px;overflow-y:auto" id="sql-display">loading...</div>
+          <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap">
+            <button class="btn-sec g" onclick="copySql()">📋 Salin SQL</button>
+            <a href="https://supabase.com/dashboard" target="_blank" class="btn-sec">↗ Buka Supabase Dashboard</a>
+          </div>
+          <div class="checklist" style="margin-top:16px">
+            <div class="chk"><div class="chk-n">1</div><span>Buka <strong style="color:var(--text)">supabase.com/dashboard</strong> → pilih project seller kamu</span></div>
+            <div class="chk"><div class="chk-n">2</div><span>Klik <strong style="color:var(--text)">SQL Editor</strong> di sidebar kiri → klik <strong style="color:var(--text)">New Query</strong></span></div>
+            <div class="chk"><div class="chk-n">3</div><span>Paste SQL di atas → klik tombol <strong style="color:var(--text)">Run</strong> (atau Ctrl+Enter)</span></div>
+            <div class="chk"><div class="chk-n">4</div><span>Pastikan muncul pesan <strong style="color:var(--green2)">Success</strong> — tabel lisensi siap digunakan</span></div>
+            <div class="chk"><div class="chk-n">5</div><span>Kembali ke tab Generator dan mulai generate app pembeli pertama kamu!</span></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+</div>
+
+<!-- ══════════════════════════════════
+     MODAL TAMBAH / EDIT PEMBELI
+══════════════════════════════════ -->
+<div class="modal-overlay" id="modal-pembeli">
+  <div class="modal">
+    <div class="modal-title" id="modal-title">TAMBAH PEMBELI BARU</div>
+    <div class="g2">
+      <div class="field"><label class="flabel">Nama Toko <span class="req">*</span></label><input class="finput txt" id="m-biz" placeholder="Salon Ayu"></div>
+      <div class="field"><label class="flabel">Nama Pemilik <span class="req">*</span></label><input class="finput txt" id="m-owner" placeholder="Ayu Lestari"></div>
+    </div>
+    <div class="field"><label class="flabel">Nomor WhatsApp <span class="req">*</span></label><input class="finput" id="m-wa" placeholder="628123456789" type="tel"></div>
+    <div class="g2">
+      <div class="field"><label class="flabel">Paket</label><select class="finput txt" id="m-plan" onchange="toggleCustomExpiryModal()"><option value="3_bulan">3 Bulan</option><option value="6_bulan">6 Bulan</option><option value="1_tahun">1 Tahun</option><option value="unlimited">Unlimited ♾️</option><option value="kustom">Kustom (atur manual)</option></select></div>
+      <div class="field"><label class="flabel">Tanggal Mulai</label><input class="finput" id="m-start" type="date"></div>
+    </div>
+    <div class="field" id="wrap-m-custom-exp" style="display:none"><label class="flabel">Tanggal Expired (manual) <span class="req">*</span></label><input class="finput" id="m-custom-exp" type="date"></div>
+    <div class="field"><label class="flabel">URL Deploy</label><input class="finput" id="m-url" placeholder="tokobudi.kasirpro.com"></div>
+    <div class="field"><label class="flabel">Catatan</label><input class="finput txt" id="m-notes" placeholder="Transfer BCA, dll"></div>
+    <div id="m-key-section" style="display:none">
+      <div class="flabel">License Key</div>
+      <div class="key-box" id="m-key" onclick="copyText(this.textContent)">—</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-sec" onclick="closeModal('modal-pembeli')">Batal</button>
+      <button class="btn-primary" id="m-save-btn" onclick="savePembeli()">SIMPAN</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL KONFIRMASI -->
+<div class="modal-overlay" id="modal-confirm">
+  <div class="modal" style="max-width:360px">
+    <div class="modal-title" id="confirm-title">Konfirmasi</div>
+    <p style="font-size:.82rem;color:var(--muted2);margin-bottom:20px" id="confirm-msg">Yakin?</p>
+    <div class="modal-actions">
+      <button class="btn-sec" onclick="closeModal('modal-confirm')">Batal</button>
+      <button class="btn btn-r" style="padding:8px 18px" id="confirm-ok">Ya, Lanjutkan</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-extend-tenant">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-title">Perpanjang Masa Aktif</div>
+    <p style="font-size:.82rem;color:var(--muted2);margin-bottom:14px" id="extend-tenant-name">—</p>
+    <div class="field">
+      <label class="flabel">Tanggal Expired Baru</label>
+      <input class="finput" id="extend-tenant-date" type="date">
+    </div>
+    <input type="hidden" id="extend-tenant-id">
+    <div class="modal-actions">
+      <button class="btn-sec" onclick="closeModal('modal-extend-tenant')">Batal</button>
+      <button class="btn btn-g" style="padding:8px 18px" onclick="saveExtendTenant()">💾 Simpan</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- ══════════════════════════════════
+     SCRIPT
+══════════════════════════════════ -->
+<script>
+// ════════════════════════════════════
+// CONFIG & STATE
+// ════════════════════════════════════
+const PASS_KEY   = 'kp4_pass';
+const SB_URL_KEY  = 'kp4_sb_url';
+const SB_KEY_KEY  = 'kp4_sb_key';
+const SB_ANON_KEY = 'kp4_sb_anon';
+const WA_KEY     = 'kp4_wa';
+const ADMIN_SECRET_KEY = 'kp4_admin_secret'; // untuk panggil Edge Function provision-business
+const APP_URL_KEY = 'kp4_app_url'; // link app kasir yang sudah di-deploy (dikirim ke customer)
+const DEFAULT_PASS = 'kasirpro2024';
+const SETUP_SQL = `-- KASIRPRO SELLER DATABASE SETUP v4.0
+-- Jalankan di: Supabase Dashboard → SQL Editor → New Query → Paste → Run
+-- AMAN dijalankan berkali-kali — tidak akan hapus data yang ada
+
+-- ── TABEL LISENSI ──
+CREATE TABLE IF NOT EXISTS licenses (
+  id            UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  business_name TEXT        NOT NULL,
+  owner_name    TEXT        NOT NULL,
+  wa_number     TEXT        NOT NULL UNIQUE,
+  plan          TEXT        NOT NULL CHECK (plan IN ('3_bulan','6_bulan','1_tahun','unlimited','kustom')),
+  started_at    DATE        NOT NULL DEFAULT CURRENT_DATE,
+  expires_at    DATE        NOT NULL,
+  is_active     BOOLEAN     NOT NULL DEFAULT true,
+  license_key   TEXT        NOT NULL UNIQUE,
+  deploy_url    TEXT,
+  supabase_url  TEXT,
+  notes         TEXT
+);
+
+-- ── UPDATE CONSTRAINT (jika tabel sudah ada, tambah 3_bulan) ──
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.table_constraints
+    WHERE table_name='licenses' AND constraint_name='licenses_plan_check') THEN
+    ALTER TABLE licenses DROP CONSTRAINT licenses_plan_check;
+  END IF;
+  ALTER TABLE licenses ADD CONSTRAINT licenses_plan_check
+    CHECK (plan IN ('3_bulan','6_bulan','1_tahun','unlimited','kustom'));
+EXCEPTION WHEN duplicate_object THEN NULL;
+END;
+$$;
+
+-- ── INDEX ──
+CREATE INDEX IF NOT EXISTS idx_lic_key     ON licenses(license_key);
+CREATE INDEX IF NOT EXISTS idx_lic_expires ON licenses(expires_at);
+CREATE INDEX IF NOT EXISTS idx_lic_active  ON licenses(is_active);
+CREATE INDEX IF NOT EXISTS idx_lic_wa      ON licenses(wa_number);
+
+-- ── ROW LEVEL SECURITY ──
+ALTER TABLE licenses ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "service only"  ON licenses;
+DROP POLICY IF EXISTS "seller_access" ON licenses;
+CREATE POLICY "seller_access" ON licenses USING (auth.role() = 'service_role');
+
+-- ── FUNCTION: check_license (dipanggil dari app kasir pembeli) ──
+CREATE OR REPLACE FUNCTION check_license(p_key TEXT)
+RETURNS JSON LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  rec       licenses%ROWTYPE;
+  days_left INT;
+  plan_label TEXT;
+BEGIN
+  SELECT * INTO rec FROM licenses WHERE license_key = p_key;
+  IF NOT FOUND THEN
+    RETURN json_build_object('valid',false,'reason','key_not_found');
+  END IF;
+  IF NOT rec.is_active THEN
+    RETURN json_build_object('valid',false,'reason','disabled');
+  END IF;
+  days_left := (rec.expires_at - CURRENT_DATE);
+  IF days_left < 0 THEN
+    UPDATE licenses SET is_active=false WHERE id=rec.id;
+    RETURN json_build_object('valid',false,'reason','expired','expired_at',rec.expires_at);
+  END IF;
+  plan_label := CASE rec.plan
+    WHEN '3_bulan' THEN '3 Bulan'
+    WHEN '6_bulan' THEN '6 Bulan'
+    WHEN '1_tahun' THEN '1 Tahun'
+    WHEN 'unlimited' THEN 'Unlimited'
+    WHEN 'kustom' THEN 'Kustom'
+    ELSE rec.plan END;
+  RETURN json_build_object(
+    'valid',true,'business_name',rec.business_name,
+    'plan',rec.plan,'plan_label',plan_label,
+    'expires_at',rec.expires_at,'days_left',days_left,'warn',days_left<=14
+  );
+END;
+$$;
+GRANT EXECUTE ON FUNCTION check_license(TEXT) TO anon;
+
+-- ── SELESAI ✓ ──
+-- Pastikan muncul pesan "Success" lalu kembali ke tab Pengaturan.`;
+
+// Generator state
+let appSource='', logoBase64='', logoMime='image/png', connOk=false, passMode='cloud', generatedBiz='', generatedKey='';
+// Dashboard state
+let supa=null, allData=[], editingId=null;
+
+// ════════════════════════════════════
+// LOGIN / LOGOUT
+// ════════════════════════════════════
+function doLogin(){
+  const pass = document.getElementById('login-pass').value;
+  const stored = localStorage.getItem(PASS_KEY) || DEFAULT_PASS;
+  if(pass === stored){
+    document.getElementById('login-screen').style.display='none';
+    document.getElementById('app').style.display='block';
+    initApp();
+  } else {
+    document.getElementById('login-err').style.display='block';
+  }
+}
+function doLogout(){
+  document.getElementById('app').style.display='none';
+  document.getElementById('login-screen').style.display='flex';
+  document.getElementById('login-pass').value='';
+  document.getElementById('login-err').style.display='none';
+}
+document.getElementById('login-pass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()});
+
+// ════════════════════════════════════
+// INIT
+// ════════════════════════════════════
+function initApp(){
+  const url   = localStorage.getItem(SB_URL_KEY);
+  const key   = localStorage.getItem(SB_KEY_KEY);
+  const anon  = localStorage.getItem(SB_ANON_KEY)||'';
+  const adminSecret = localStorage.getItem(ADMIN_SECRET_KEY)||'';
+  const appUrl = localStorage.getItem(APP_URL_KEY)||'';
+  const wa    = localStorage.getItem(WA_KEY)||'';
+  const brand = localStorage.getItem('kp4_brand')||'';
+  const jam   = localStorage.getItem('kp4_jam')||'09.00–21.00 WIB';
+  const harga = localStorage.getItem('kp4_harga')||'';
+  document.getElementById('cfg-url').value   = url||'';
+  document.getElementById('cfg-key').value   = key||'';
+  document.getElementById('cfg-anon').value  = anon;
+  document.getElementById('cfg-admin-secret').value = adminSecret;
+  document.getElementById('cfg-app-url').value = appUrl;
+  document.getElementById('cfg-wa').value    = wa;
+  document.getElementById('cfg-brand').value = brand;
+  document.getElementById('cfg-jam').value   = jam;
+  document.getElementById('cfg-harga').value = harga;
+  document.getElementById('sql-display').textContent = SETUP_SQL;
+  document.getElementById('f-start').value = new Date().toISOString().split('T')[0];
+  document.getElementById('m-start').value = new Date().toISOString().split('T')[0];
+  updateExpiry();
+  cfgUpdatePreview();
+  if(url && key){
+    supa = supabase.createClient(url, key);
+    loadData();
+    document.getElementById('s-online-txt').textContent = 'connected';
+  } else {
+    document.getElementById('s-online-txt').textContent = 'no config';
+    showPage('pengaturan');
+    toast('// isi Supabase di Pengaturan dulu',true);
+  }
+}
+
+function cfgUpdatePreview(){
+  const url   = document.getElementById('cfg-url')?.value.trim()||'';
+  const wa    = document.getElementById('cfg-wa')?.value.trim()||'';
+  const brand = document.getElementById('cfg-brand')?.value.trim()||'';
+  const jam   = document.getElementById('cfg-jam')?.value.trim()||'';
+  const pass  = document.getElementById('cfg-pass')?.value||'';
+  const pass2 = document.getElementById('cfg-pass2')?.value||'';
+  const hint  = document.getElementById('pass-match-hint');
+  if(pass && pass2){
+    if(pass===pass2){hint.textContent='// ✓ password cocok';hint.style.color='var(--green2)';}
+    else{hint.textContent='// ✗ password tidak cocok';hint.style.color='var(--red)';}
+  } else { hint.textContent=''; }
+  const pu=document.getElementById('cpv-url');if(pu)pu.textContent=url?url.replace('https://','').substring(0,32)+'...':'—';
+  const pb=document.getElementById('cpv-brand');if(pb)pb.textContent=brand||'—';
+  const pw=document.getElementById('cpv-wa');if(pw)pw.textContent=wa||'—';
+  const pj=document.getElementById('cpv-jam');if(pj)pj.textContent=jam||'—';
+  const pp=document.getElementById('cpv-pass');if(pp)pp.textContent=pass?(pass===pass2?'✓ Akan diubah':'✗ Tidak cocok'):'Tidak diubah';
+}
+function cfgCheckReady(){cfgUpdatePreview();}
+
+async function testCfgConn(){
+  const url=document.getElementById('cfg-url').value.trim();
+  const key=document.getElementById('cfg-key').value.trim();
+  if(!url||!key){toast('// isi URL dan Key dulu',true);return;}
+  const btn=document.getElementById('cfg-test-btn');
+  btn.disabled=true;btn.textContent='⏳ Testing...';
+  document.getElementById('cfg-conn-status').innerHTML=`<span class="pill testing">⟳ Menghubungkan...</span>`;
+  try{
+    const res=await fetch(`${url}/rest/v1/licenses?select=id&limit=1`,{headers:{'apikey':key,'Authorization':'Bearer '+key},signal:AbortSignal.timeout(8000)});
+    const badge=document.getElementById('cfg-conn-badge');
+    if(res.ok){
+      document.getElementById('cfg-conn-status').innerHTML=`<span class="pill ok">✓ Terhubung!</span>`;
+      if(badge)badge.innerHTML=`<span class="pill ok">✓ Online</span>`;
+      document.getElementById('cpv-conn').textContent='✓ Terhubung';
+      document.getElementById('cpv-conn').className='pvval ok';
+      toast('// koneksi seller DB berhasil ✓');
+    } else if(res.status===401){
+      document.getElementById('cfg-conn-status').innerHTML=`<span class="pill err">✗ Key tidak valid</span>`;
+    } else if(res.status===404){
+      document.getElementById('cfg-conn-status').innerHTML=`<span class="pill warn">⚠ Terhubung — jalankan SQL setup dulu</span>`;
+      document.getElementById('cpv-conn').textContent='⚠ Perlu SQL setup';
+      document.getElementById('cpv-conn').className='pvval warn';
+    } else {
+      document.getElementById('cfg-conn-status').innerHTML=`<span class="pill err">✗ Error ${res.status}</span>`;
+    }
+  }catch(e){
+    document.getElementById('cfg-conn-status').innerHTML=`<span class="pill warn">⚠ Timeout — cek URL</span>`;
+  }
+  btn.disabled=false;btn.textContent='⚡ Test Ulang';
+}
+
+async function saveConfig(){
+  const url   = document.getElementById('cfg-url').value.trim();
+  const key   = document.getElementById('cfg-key').value.trim();
+  const wa    = document.getElementById('cfg-wa').value.trim();
+  const brand = document.getElementById('cfg-brand').value.trim();
+  const jam   = document.getElementById('cfg-jam').value.trim();
+  const harga = document.getElementById('cfg-harga').value.trim();
+  const pass  = document.getElementById('cfg-pass').value.trim();
+  const pass2 = document.getElementById('cfg-pass2').value.trim();
+  const anon  = document.getElementById('cfg-anon').value.trim();
+  const adminSecret = document.getElementById('cfg-admin-secret').value.trim();
+  const appUrl = document.getElementById('cfg-app-url').value.trim();
+  if(!url||!key){toast('// Supabase URL dan Key wajib diisi',true);return;}
+  if(!anon){toast('// Anon Key wajib diisi agar lisensi bisa terbaca oleh app pembeli',true);return;}
+  if(!adminSecret){toast('// Admin Secret wajib diisi agar Provisioning bisa dipakai',true);return;}
+  if(!wa){toast('// nomor WA seller wajib diisi',true);return;}
+  if(pass && pass!==pass2){toast('// password tidak cocok',true);return;}
+  if(pass && pass.length<4){toast('// password min 4 karakter',true);return;}
+
+  const btn=document.getElementById('cfg-save-btn');
+  btn.disabled=true;
+  document.getElementById('cfg-save-txt').textContent='MENYIMPAN...';
+  document.getElementById('cfg-prog-wrap').style.display='block';
+
+  setCfgProgress(30,'menyimpan konfigurasi...');await delay(200);
+  localStorage.setItem(SB_URL_KEY,url);
+  localStorage.setItem(SB_KEY_KEY,key);
+  localStorage.setItem(SB_ANON_KEY,anon);
+  localStorage.setItem(ADMIN_SECRET_KEY,adminSecret);
+  localStorage.setItem(APP_URL_KEY,appUrl);
+  localStorage.setItem(WA_KEY,wa);
+  localStorage.setItem('kp4_brand',brand);
+  localStorage.setItem('kp4_jam',jam||'09.00–21.00 WIB');
+  localStorage.setItem('kp4_harga',harga);
+  if(pass) localStorage.setItem(PASS_KEY,pass);
+
+  setCfgProgress(70,'menginisialisasi Supabase...');await delay(200);
+  supa = supabase.createClient(url, key);
+
+  setCfgProgress(100,'selesai!');await delay(300);
+  document.getElementById('cfg-prog-wrap').style.display='none';
+  document.getElementById('s-online-txt').textContent='connected';
+  document.getElementById('cfg-save-txt').textContent='✓ TERSIMPAN';
+  toast('// pengaturan disimpan ✓');
+  setTimeout(()=>{document.getElementById('cfg-save-txt').textContent='SIMPAN PENGATURAN';btn.disabled=false;},2000);
+  loadData();
+}
+function setCfgProgress(pct,label){
+  document.getElementById('cfg-prog-fill').style.width=pct+'%';
+  document.getElementById('cfg-prog-text').textContent=label;
+  document.getElementById('cfg-prog-pct').textContent=pct+'%';
+}
+function copySql(){navigator.clipboard.writeText(SETUP_SQL).then(()=>toast('// SQL disalin ✓'))}
+
+// ════════════════════════════════════
+// SUPABASE — LOAD DATA
+// ════════════════════════════════════
+async function loadData(){
+  if(!supa) return;
+  try{
+    const {data,error} = await supa.from('licenses').select('*').order('created_at',{ascending:false});
+    if(error) throw error;
+    allData = data||[];
+    renderStats();
+    renderTablePembeli();
+    renderDashWarn();
+    renderExpiredPage();
+    // refresh order badge jika sudah ada data orders
+    if(allOrders.length) updateOrderBadge();
+    // auto load orders badge
+    try{
+      const {data:od} = await supa.from('orders').select('id,status').eq('status','pending');
+      if(od){ allOrders = allOrders.length ? allOrders : od; updateOrderBadge(); }
+    }catch(e){}
+    // auto load tenant badge (jangan sampai gagal total kalau tabel businesses belum ada)
+    try{ await loadTenants(); }catch(e){}
+  } catch(e){
+    toast('// gagal load: '+e.message,true);
+    document.getElementById('s-online-txt').textContent='error';
+  }
+}
+
+// ════════════════════════════════════
+// HELPERS
+// ════════════════════════════════════
+function daysLeft(d){
+  const now=new Date();now.setHours(0,0,0,0);
+  const exp=new Date(d);exp.setHours(0,0,0,0);
+  return Math.floor((exp-now)/86400000);
+}
+function fmtDate(d){if(!d)return'—';return new Date(d).toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'})}
+function statusBadge(r){
+  const dl=daysLeft(r.expires_at);
+  if(!r.is_active) return'<span class="badge nonaktif">⏸ Nonaktif</span>';
+  if(dl<0)         return'<span class="badge expired">❌ Expired</span>';
+  if(dl<=14)       return`<span class="badge warning">⚠️ ${dl}h</span>`;
+  return'<span class="badge aktif">✅ Aktif</span>';
+}
+function planBadge(p){
+  if(p==='1_tahun')  return'<span class="badge plan12">1 Tahun</span>';
+  if(p==='3_bulan')  return'<span class="badge plan3">3 Bulan</span>';
+  if(p==='unlimited')return'<span class="badge" style="background:rgba(245,158,11,.15);color:#f59e0b;border:1px solid rgba(245,158,11,.3)">Unlimited ♾️</span>';
+  if(p==='kustom')   return'<span class="badge plancustom">⚙ Kustom</span>';
+  return'<span class="badge plan6">6 Bulan</span>';
+}
+function genKey(biz){
+  const pfx=biz.replace(/[^a-zA-Z]/g,'').substring(0,3).toUpperCase()||'LIC';
+  const r=()=>Math.random().toString(36).substring(2,6).toUpperCase();
+  return`${pfx}-${r()}-${r()}`;
+}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function fmtSize(b){return b>1024*1024?(b/1024/1024).toFixed(1)+' MB':Math.round(b/1024)+' KB'}
+function delay(ms){return new Promise(r=>setTimeout(r,ms))}
+function copyText(t){navigator.clipboard.writeText(t).then(()=>toast('// disalin: '+t.substring(0,20)+'...'))}
+
+// ════════════════════════════════════
+// RENDER STATS
+// ════════════════════════════════════
+function renderStats(){
+  const total = allData.length;
+  const aktif = allData.filter(r=>r.is_active&&daysLeft(r.expires_at)>=0).length;
+  const warn  = allData.filter(r=>r.is_active&&daysLeft(r.expires_at)>=0&&daysLeft(r.expires_at)<=14).length;
+  const exp   = allData.filter(r=>daysLeft(r.expires_at)<0).length;
+  document.getElementById('st-total').textContent=total;
+  document.getElementById('st-aktif').textContent=aktif;
+  document.getElementById('st-warn').textContent=warn;
+  document.getElementById('st-exp').textContent=exp;
+  const badge=document.getElementById('badge-expired');
+  const cnt=warn+exp;
+  badge.textContent=cnt;
+  badge.classList.toggle('show',cnt>0);
+}
+
+// ════════════════════════════════════
+// RENDER TABLES
+// ════════════════════════════════════
+function renderDashWarn(){
+  const rows=allData.filter(r=>r.is_active&&daysLeft(r.expires_at)>=0&&daysLeft(r.expires_at)<=14);
+  const tb=document.getElementById('tbody-dash');
+  if(!rows.length){tb.innerHTML=`<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px;font-size:.78rem">✅ Tidak ada yang hampir expired</td></tr>`;return;}
+  tb.innerHTML=rows.map(r=>{
+    const dl=daysLeft(r.expires_at);
+    const c=dl<=3?'var(--red)':dl<=7?'var(--amber)':'var(--green2)';
+    return`<tr><td><span class="td-biz">${esc(r.business_name)}</span></td>
+    <td><a href="https://wa.me/${r.wa_number}" target="_blank" style="color:var(--green);text-decoration:none">📱 ${r.wa_number}</a></td>
+    <td>${planBadge(r.plan)}</td>
+    <td><div class="days-bar"><span class="days-text" style="color:${c}">${dl}h</span><div class="bar-track"><div class="bar-fill" style="width:${Math.min(100,dl/14*100)}%;background:${c}"></div></div></div></td>
+    <td><div style="display:flex;gap:6px">
+      <button class="btn btn-a" onclick="quickPerpanjang('${r.id}')">🔄 Perpanjang</button>
+      <button class="btn btn-b" onclick="sendWA('${r.wa_number}','${esc(r.business_name)}',${dl})">💬 WA</button>
+    </div></td></tr>`;
+  }).join('');
+}
+
+function renderTablePembeli(){
+  const q=(document.getElementById('search-pembeli')?.value||'').toLowerCase();
+  const rows=allData.filter(r=>r.business_name.toLowerCase().includes(q)||r.wa_number.includes(q)||(r.owner_name||'').toLowerCase().includes(q));
+  const tb=document.getElementById('tbody-pembeli');
+  const em=document.getElementById('empty-pembeli');
+  if(!rows.length){tb.innerHTML='';em.style.display='block';return;}
+  em.style.display='none';
+  tb.innerHTML=rows.map(r=>`
+    <tr>
+      <td><span class="td-biz">${esc(r.business_name)}</span></td>
+      <td style="font-size:.78rem">${esc(r.owner_name)}</td>
+      <td><a href="https://wa.me/${r.wa_number}" target="_blank" style="color:var(--green);text-decoration:none;font-size:.78rem">📱 ${r.wa_number}</a></td>
+      <td>${planBadge(r.plan)}</td>
+      <td>${statusBadge(r)}</td>
+      <td style="font-size:.76rem">${fmtDate(r.expires_at)}</td>
+      <td><span class="td-mono" onclick="copyText('${r.license_key}')" title="Klik salin" style="cursor:pointer">${r.license_key}</span></td>
+      <td><div style="display:flex;gap:4px">
+        <button class="btn btn-g" onclick="openModalEdit('${r.id}')">✏️</button>
+        <button class="btn btn-a" onclick="quickPerpanjang('${r.id}')">🔄</button>
+        <button class="btn btn-r" onclick="confirmDelete('${r.id}')">🗑</button>
+      </div></td>
+    </tr>`).join('');
+}
+
+function renderExpiredPage(){
+  const rows=allData.filter(r=>daysLeft(r.expires_at)<0||(r.is_active&&daysLeft(r.expires_at)<=14));
+  rows.sort((a,b)=>daysLeft(a.expires_at)-daysLeft(b.expires_at));
+  const tb=document.getElementById('tbody-exp-page');
+  const em=document.getElementById('empty-exp-page');
+  if(!rows.length){tb.innerHTML='';em.style.display='block';return;}
+  em.style.display='none';
+  tb.innerHTML=rows.map(r=>{
+    const dl=daysLeft(r.expires_at);
+    const label=dl<0?`<span style="color:var(--red);font-weight:700;font-family:var(--font-mono);font-size:.72rem">${Math.abs(dl)} hari lalu</span>`:`<span style="color:var(--amber);font-weight:700;font-family:var(--font-mono);font-size:.72rem">${dl} hari lagi</span>`;
+    return`<tr>
+      <td><span class="td-biz">${esc(r.business_name)}</span><br><span style="font-size:.7rem;color:var(--muted)">${esc(r.owner_name)}</span></td>
+      <td><a href="https://wa.me/${r.wa_number}" target="_blank" style="color:var(--green);text-decoration:none;font-size:.78rem">📱 ${r.wa_number}</a></td>
+      <td>${planBadge(r.plan)}</td>
+      <td>${label}</td>
+      <td><div style="display:flex;gap:4px">
+        <button class="btn btn-a" onclick="quickPerpanjang('${r.id}')">🔄 Perpanjang</button>
+        <button class="btn btn-b" onclick="sendWA('${r.wa_number}','${esc(r.business_name)}',${dl})">💬 WA</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+}
+
+// ════════════════════════════════════
+// CRUD PEMBELI
+// ════════════════════════════════════
+function toggleCustomExpiryModal(){
+  const plan=document.getElementById('m-plan')?.value;
+  const wrap=document.getElementById('wrap-m-custom-exp');
+  if(!wrap)return;
+  wrap.style.display=plan==='kustom'?'block':'none';
+}
+function openModalTambah(){
+  editingId=null;
+  document.getElementById('modal-title').textContent='TAMBAH PEMBELI BARU';
+  document.getElementById('m-biz').value='';
+  document.getElementById('m-owner').value='';
+  document.getElementById('m-wa').value='';
+  document.getElementById('m-plan').value='3_bulan';
+  document.getElementById('m-start').value=new Date().toISOString().split('T')[0];
+  document.getElementById('m-custom-exp').value='';
+  document.getElementById('m-url').value='';
+  document.getElementById('m-notes').value='';
+  document.getElementById('m-key-section').style.display='none';
+  document.getElementById('m-save-btn').textContent='SIMPAN';
+  toggleCustomExpiryModal();
+  openModal('modal-pembeli');
+}
+function openModalEdit(id){
+  const r=allData.find(x=>x.id===id);if(!r)return;
+  editingId=id;
+  document.getElementById('modal-title').textContent='EDIT PEMBELI';
+  document.getElementById('m-biz').value=r.business_name;
+  document.getElementById('m-owner').value=r.owner_name;
+  document.getElementById('m-wa').value=r.wa_number;
+  document.getElementById('m-plan').value=r.plan;
+  document.getElementById('m-start').value=r.started_at;
+  document.getElementById('m-custom-exp').value=r.plan==='kustom'?r.expires_at:'';
+  document.getElementById('m-url').value=r.deploy_url||'';
+  document.getElementById('m-notes').value=r.notes||'';
+  document.getElementById('m-key').textContent=r.license_key;
+  document.getElementById('m-key-section').style.display='block';
+  document.getElementById('m-save-btn').textContent='UPDATE';
+  toggleCustomExpiryModal();
+  openModal('modal-pembeli');
+}
+async function savePembeli(){
+  const biz  =document.getElementById('m-biz').value.trim();
+  const owner=document.getElementById('m-owner').value.trim();
+  const wa   =document.getElementById('m-wa').value.trim().replace(/\D/g,'');
+  const plan =document.getElementById('m-plan').value;
+  const start=document.getElementById('m-start').value||new Date().toISOString().split('T')[0];
+  const url  =document.getElementById('m-url').value.trim();
+  const notes=document.getElementById('m-notes').value.trim();
+  if(!biz||!owner||!wa){toast('// nama toko, pemilik, WA wajib diisi',true);return;}
+  let expiresStr;
+  if(plan==='kustom'){
+    const customExp=document.getElementById('m-custom-exp').value;
+    if(!customExp){toast('// tanggal expired manual wajib diisi untuk paket Kustom',true);return;}
+    expiresStr=customExp;
+  } else {
+    const expDate=new Date(start);
+    if(plan==='3_bulan') expDate.setMonth(expDate.getMonth()+3);
+    else if(plan==='6_bulan') expDate.setMonth(expDate.getMonth()+6);
+    else if(plan==='unlimited'){expDate.setFullYear(2099);expDate.setMonth(11);expDate.setDate(31);}
+    else expDate.setFullYear(expDate.getFullYear()+1);
+    expiresStr=expDate.toISOString().split('T')[0];
+  }
+  const btn=document.getElementById('m-save-btn');
+  btn.textContent='...';btn.disabled=true;
+  try{
+    if(editingId){
+      const{error}=await supa.from('licenses').update({business_name:biz,owner_name:owner,wa_number:wa,plan,started_at:start,expires_at:expiresStr,deploy_url:url||null,notes:notes||null,is_active:true}).eq('id',editingId);
+      if(error)throw error;
+      toast('// data pembeli diupdate ✓');
+    } else {
+      const lk=genKey(biz);
+      const{error}=await supa.from('licenses').insert({business_name:biz,owner_name:owner,wa_number:wa,plan,started_at:start,expires_at:expiresStr,is_active:true,license_key:lk,deploy_url:url||null,notes:notes||null});
+      if(error)throw error;
+      toast('// pembeli ditambahkan! key: '+lk,false,4000);
+    }
+    closeModal('modal-pembeli');
+    await loadData();
+  }catch(e){toast('// error: '+e.message,true);}
+  finally{btn.textContent=editingId?'UPDATE':'SIMPAN';btn.disabled=false;}
+}
+async function quickPerpanjang(id){
+  const r=allData.find(x=>x.id===id);if(!r)return;
+  if(r.plan==='kustom'){
+    toast('// paket Kustom — atur tanggal expired manual lewat tombol Edit ✏️',true,4000);
+    openModalEdit(id);
+    return;
+  }
+  const base=daysLeft(r.expires_at)<0?new Date():new Date(r.expires_at);
+  const ne=new Date(base);
+  if(r.plan==='3_bulan')ne.setMonth(ne.getMonth()+3);
+  else if(r.plan==='6_bulan')ne.setMonth(ne.getMonth()+6);
+  else if(r.plan==='unlimited'){ne.setFullYear(2099);ne.setMonth(11);ne.setDate(31);}
+  else ne.setFullYear(ne.getFullYear()+1);
+  try{
+    const{error}=await supa.from('licenses').update({expires_at:ne.toISOString().split('T')[0],is_active:true}).eq('id',id);
+    if(error)throw error;
+    toast(`// ${r.business_name} diperpanjang → ${fmtDate(ne.toISOString().split('T')[0])}`);
+    await loadData();
+  }catch(e){toast('// error: '+e.message,true);}
+}
+function confirmDelete(id){
+  const r=allData.find(x=>x.id===id);if(!r)return;
+  document.getElementById('confirm-title').textContent='Hapus Pembeli';
+  document.getElementById('confirm-msg').textContent=`Hapus "${r.business_name}" (${r.wa_number})? Tidak bisa dibatalkan.`;
+  document.getElementById('confirm-ok').onclick=()=>deletePembeli(id);
+  openModal('modal-confirm');
+}
+async function deletePembeli(id){
+  try{
+    const{error}=await supa.from('licenses').delete().eq('id',id);
+    if(error)throw error;
+    closeModal('modal-confirm');toast('// pembeli dihapus');
+    await loadData();
+  }catch(e){toast('// error: '+e.message,true);}
+}
+function sendWA(wa,biz,dl){
+  const msg=dl<0
+    ?`Halo kak *${biz}*! 👋\n\nLisensi app kasir sudah *expired ${Math.abs(dl)} hari lalu*.\nSegera perpanjang agar bisa pakai lagi! 😊`
+    :`Halo kak *${biz}*! 👋\n\nLisensi app kasir akan *expired ${dl} hari lagi*.\nYuk perpanjang sekarang! 😊`;
+  window.open(`https://wa.me/${wa}?text=${encodeURIComponent(msg)}`,'_blank');
+}
+
+// ════════════════════════════════════
+// GENERATOR — UPLOAD & LOGIC
+// ════════════════════════════════════
+async function hashPassword(p){const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(p));return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');}
+function resizeImage(base64,mime,w,h,whiteBg=false){return new Promise(resolve=>{const img=new Image();img.onload=()=>{const c=document.createElement('canvas');c.width=w;c.height=h;const ctx=c.getContext('2d');if(whiteBg){ctx.fillStyle='#ffffff';ctx.fillRect(0,0,w,h);}const scale=Math.min(w/img.width,h/img.height);const sw=img.width*scale,sh=img.height*scale;ctx.drawImage(img,(w-sw)/2,(h-sh)/2,sw,sh);resolve(c.toDataURL('image/png').split(',')[1]);};img.src=base64;});}
+
+function handleAppUpload(input){
+  const file=input.files[0];if(!file)return;
+  if(file.size>15*1024*1024){toast('// file terlalu besar (max 15MB)',true);return;}
+  const reader=new FileReader();
+  reader.onload=e=>{
+    appSource=e.target.result;
+    if(!appSource.includes('SUPABASE_URL_INJECT')||!appSource.includes('NAMA_USAHA')){toast('// file tidak valid — pastikan upload file master (bukan file yang sudah di-generate)',true);return;}
+    document.getElementById('uz-app-icon').textContent='✅';
+    document.getElementById('uz-app-title').textContent=file.name;
+    document.getElementById('uz-app-sub').textContent=fmtSize(file.size)+' · KasirPro App terdeteksi';
+    document.getElementById('uz-app').classList.add('done');
+    const isClean=appSource.includes('NAMA_USAHA')&&appSource.includes('ALAMAT_USAHA');
+    document.getElementById('app-upload-info').innerHTML=`<div style="margin-top:8px"><span class="ver-badge ${isClean?'ok':'warn'}">${isClean?'✓ Master bersih — siap generate':'⚠ File master lama — ada nama hardcode, hasil generate mungkin salah!'}</span></div>`;
+    if(!isClean){toast('// ⚠ File master belum bersih — ganti dulu placeholder hardcode sebelum generate!',true,6000);}
+    [2,3,4,5,6].forEach(enableStep);
+    setStep(2);toast('// app berhasil diupload ✓');
+  };reader.readAsText(file);
+}
+
+function handleLogoUpload(input){
+  const file=input.files[0];if(!file)return;
+  if(file.size>5*1024*1024){toast('// logo terlalu besar (max 5MB)',true);return;}
+  const reader=new FileReader();
+  reader.onload=e=>{
+    logoBase64=e.target.result;logoMime=file.type||'image/png';
+    const prev=`<img src="${logoBase64}" style="width:100%;height:100%;object-fit:contain">`;
+    ['prev-icon-192','prev-icon-sidebar','prev-icon-thermal','prev-icon-fav'].forEach(id=>document.getElementById(id).innerHTML=prev);
+    document.getElementById('uz-logo-content').innerHTML=`<img src="${logoBase64}" style="width:56px;height:56px;object-fit:contain;border-radius:8px;margin-bottom:6px"><div style="font-family:var(--font-head);font-weight:700;font-size:.78rem;color:var(--green2)">✓ ${file.name}</div><div style="font-size:.65rem;color:var(--muted2);margin-top:3px">${fmtSize(file.size)} · Klik untuk ganti</div>`;
+    document.getElementById('uz-logo').classList.add('done');
+    ['fl-icon192','fl-icon512','fl-logo','fl-thermal','fl-ico'].forEach(id=>{const el=document.getElementById(id);el.textContent='// ✓ READY';el.className='fst ok';});
+    document.getElementById('pv-logo').textContent='✓ '+file.name;
+    document.getElementById('pv-logo').className='pvval ok';
+    updatePreview();toast('// logo berhasil diupload ✓');
+  };reader.readAsDataURL(file);
+}
+
+function setPassMode(mode){
+  passMode=mode;
+  document.getElementById('mode-cloud').classList.toggle('active',mode==='cloud');
+  document.getElementById('mode-embed').classList.toggle('active',mode==='embed');
+  document.getElementById('pv-mode').textContent=mode==='cloud'?'☁ Cloud':'⬡ Embed';
+  document.getElementById('pv-mode').className='pvval '+(mode==='cloud'?'ok':'warn');
+}
+
+async function testSupabase(){
+  const url=document.getElementById('f-sb-url').value.trim();
+  const key=document.getElementById('f-sb-key').value.trim();
+  if(!url||!key){toast('// isi URL dan Key dulu',true);return;}
+  const btn=document.getElementById('btn-test');
+  btn.disabled=true;btn.textContent='⏳ Testing...';
+  setConnStatus('testing','⟳ Menghubungkan...');
+  try{
+    const res=await fetch(`${url}/rest/v1/layanan?select=id&limit=1`,{headers:{'apikey':key,'Authorization':'Bearer '+key},signal:AbortSignal.timeout(8000)});
+    if(res.ok){connOk=true;setConnStatus('ok','✓ Terhubung!');toast('// koneksi berhasil ✓');}
+    else if(res.status===401){connOk=false;setConnStatus('err','✗ Key tidak valid');}
+    else if(res.status===404){connOk=true;setConnStatus('warn','⚠ Terhubung — jalankan setup-complete.sql');}
+    else{connOk=false;setConnStatus('err',`✗ Error ${res.status}`);}
+  }catch(e){connOk=true;setConnStatus('warn','⚠ Browser CORS — lanjut saja');}
+  btn.disabled=false;btn.textContent='⚡ Test Ulang';
+  updatePreview();checkReady();
+}
+function setConnStatus(type,msg){
+  document.getElementById('conn-status').innerHTML=`<span class="pill ${type}">${msg}</span>`;
+  document.getElementById('pv-conn').textContent=msg;
+  document.getElementById('pv-conn').className='pvval '+(type==='ok'?'ok':type==='warn'?'warn':'');
+}
+
+function updateExpiry(){
+  const start=document.getElementById('f-start')?.value;
+  const plan=document.getElementById('f-plan')?.value;
+  const wrap=document.getElementById('wrap-f-custom-exp');
+  if(wrap) wrap.style.display=plan==='kustom'?'block':'none';
+  const el=document.getElementById('expiry-preview');
+  if(plan==='kustom'){
+    const ce=document.getElementById('f-custom-exp')?.value;
+    if(el) el.textContent=ce?`// expired: ${fmtDate(ce)} (kustom — diatur manual)`:'// isi tanggal expired manual di atas';
+    updatePreview();
+    return;
+  }
+  if(!start) return;
+  if(plan==='unlimited'){
+    if(el) el.textContent='// expired: Seumur Hidup ♾️ (unlimited)';
+    updatePreview();
+    return;
+  }
+  const d=new Date(start);
+  if(plan==='3_bulan') d.setMonth(d.getMonth()+3);
+  else if(plan==='6_bulan') d.setMonth(d.getMonth()+6);
+  else d.setFullYear(d.getFullYear()+1);
+  if(el) el.textContent=`// expired: ${fmtDate(d.toISOString().split('T')[0])} (${plan==='3_bulan'?'3 bulan':plan==='6_bulan'?'6 bulan':'1 tahun'})`;
+  updatePreview();
+}
+
+function updatePreview(){
+  const g=id=>(document.getElementById(id)?.value||'').trim()||'—';
+  document.getElementById('pv-owner').textContent=g('f-owner-name');
+  document.getElementById('pv-wa').textContent=g('f-wa');
+  const planVal=document.getElementById('f-plan')?.value;
+  document.getElementById('pv-plan').textContent=planVal==='1_tahun'?'1 Tahun':planVal==='3_bulan'?'3 Bulan':planVal==='unlimited'?'Unlimited ♾️':planVal==='kustom'?'Kustom':'6 Bulan';
+  document.getElementById('pv-biz').textContent=g('f-biz-name');
+  const url=document.getElementById('f-sb-url')?.value.trim();
+  document.getElementById('pv-url').textContent=url?url.replace('https://','').substring(0,28)+'...':'—';
+  const start=document.getElementById('f-start')?.value;
+  const plan=document.getElementById('f-plan')?.value;
+  if(plan==='kustom'){
+    const ce=document.getElementById('f-custom-exp')?.value;
+    document.getElementById('pv-exp').textContent=ce?fmtDate(ce):'—';
+  } else if(start){
+    if(plan==='unlimited'){
+      document.getElementById('pv-exp').textContent='♾️ Seumur Hidup';
+    } else {
+      const d=new Date(start);
+      const planV=document.getElementById('f-plan')?.value;
+      if(planV==='3_bulan')d.setMonth(d.getMonth()+3);
+      else if(planV==='6_bulan')d.setMonth(d.getMonth()+6);
+      else d.setFullYear(d.getFullYear()+1);
+      document.getElementById('pv-exp').textContent=fmtDate(d.toISOString().split('T')[0]);
+    }
+  }
+  checkReady();
+}
+
+function showHargaHint(){
+  const plan = document.getElementById('f-plan')?.value;
+  const harga = localStorage.getItem('kp4_harga') || '';
+  const el = document.getElementById('harga-hint');
+  if (!el) return;
+  if (!harga) { el.textContent = ''; return; }
+  // Parse format: 3bln:150rb | 6bln:250rb | 1thn:400rb | unlimited:Harga
+  const map = {};
+  harga.split('|').forEach(function(part) {
+    const kv = part.trim().split(':');
+    if (kv.length >= 2) {
+      const k = kv[0].trim().toLowerCase();
+      const v = kv.slice(1).join(':').trim();
+      if (k.includes('3')) map['3_bulan'] = v;
+      else if (k.includes('6')) map['6_bulan'] = v;
+      else if (k.includes('thn') || k.includes('1t')) map['1_tahun'] = v;
+      else if (k.includes('un') || k.includes('lim')) map['unlimited'] = v;
+      else if (k.includes('kus')) map['kustom'] = v;
+    }
+  });
+  el.textContent = map[plan] ? '💰 Harga: ' + map[plan] : '';
+}
+
+function checkReady(){
+  const plan=document.getElementById('f-plan')?.value;
+  const customOk = plan!=='kustom' || document.getElementById('f-custom-exp')?.value;
+  const ok = appSource
+    && document.getElementById('f-owner-name')?.value.trim()
+    && document.getElementById('f-wa')?.value.trim()
+    && document.getElementById('f-biz-name')?.value.trim()
+    && document.getElementById('f-short-name')?.value.trim()
+    && document.getElementById('f-sb-url')?.value.trim()
+    && document.getElementById('f-sb-key')?.value.trim()
+    && document.getElementById('f-owner-pass')?.value.trim().length>=4
+    && document.getElementById('f-kasir-pass')?.value.trim().length>=4
+    && customOk;
+  document.getElementById('btn-generate').disabled=!ok;
+}
+
+// ════════════════════════════════════
+// GENERATE ZIP — WITH LICENSE
+// ════════════════════════════════════
+async function generateZip(){
+  const ownerName = document.getElementById('f-owner-name').value.trim();
+  const waNum     = document.getElementById('f-wa').value.trim().replace(/\D/g,'');
+  const plan      = document.getElementById('f-plan').value;
+  const startDate = document.getElementById('f-start').value || new Date().toISOString().split('T')[0];
+  const deployUrl = document.getElementById('f-deploy-url').value.trim();
+  const biz    = document.getElementById('f-biz-name').value.trim();
+  const sh     = document.getElementById('f-short-name').value.trim();
+  const addr   = document.getElementById('f-address').value.trim()||'';
+  const phone  = document.getElementById('f-phone').value.trim()||'';
+  const url    = document.getElementById('f-sb-url').value.trim();
+  const key    = document.getElementById('f-sb-key').value.trim();
+  const owner  = document.getElementById('f-owner-pass').value.trim();
+  const kasir  = document.getElementById('f-kasir-pass').value.trim();
+  const pin    = document.getElementById('f-reset-pin').value.trim()||(Math.floor(1000+Math.random()*9000).toString());
+  const customExp = document.getElementById('f-custom-exp')?.value||'';
+  if(plan==='kustom' && !customExp){
+    toast('// tanggal expired manual wajib diisi untuk paket Kustom',true);
+    return;
+  }
+  const safeName=biz.toLowerCase().replace(/[^a-z0-9]/g,'-').replace(/-+/g,'-');
+  const licenseKey=genKey(biz);
+  const sellerSbUrl =localStorage.getItem(SB_URL_KEY)||'';
+  const sellerSbAnon=localStorage.getItem(SB_ANON_KEY)||'';
+  const sellerWa    =localStorage.getItem(WA_KEY)||'628000000000';
+  const btn=document.getElementById('btn-generate');
+  if(!sellerSbAnon){
+    toast('// ❌ Anon Key seller belum diisi di Pengaturan! Generate dibatalkan.',true,6000);
+    btn.disabled=false;document.getElementById('btn-gen-text').textContent='GENERATE & DOWNLOAD ZIP';
+    document.getElementById('progress-wrap').style.display='none';
+    return;
+  }
+
+  btn.disabled=true;document.getElementById('btn-gen-text').textContent='PROCESSING...';
+  document.getElementById('progress-wrap').style.display='block';
+
+  setProgress(5,'hashing passwords...');await delay(100);
+  const ownerHash=await hashPassword(owner);
+  const kasirHash=await hashPassword(kasir);
+  const pinHash=await hashPassword(pin);
+
+  setProgress(15,'patching index.html + license...');await delay(100);
+  let html=appSource;
+
+  // ── Inject Supabase pembeli ──
+  html=html.replace(
+    /const SUPABASE_URL\s*=\s*'SUPABASE_URL_INJECT'/,
+    `const SUPABASE_URL = '${url}'`
+  );
+  html=html.replace(
+    /const SUPABASE_KEY\s*=\s*'SUPABASE_KEY_INJECT'/,
+    `const SUPABASE_KEY = '${key}'`
+  );
+
+  // ── Inject password hash ──
+  html=html.replace(
+    /owner:\s*'OWNER_HASH_INJECT'[^\n]*/,
+    `owner: '${ownerHash}',   // injected by generator`
+  );
+  html=html.replace(
+    /kasir:\s*'KASIR_HASH_INJECT'[^\n]*/,
+    `kasir: '${kasirHash}'    // injected by generator`
+  );
+  html=html.replace(
+    /let RESET_PIN_HASH\s*=\s*'RESET_PIN_INJECT'[^\n]*/,
+    `let RESET_PIN_HASH = '${pinHash}';   // injected by generator`
+  );
+
+  // ── Inject identitas usaha ──
+  html=html.replace(/<title>[^<]*<\/title>/g,`<title>${esc(biz)}</title>`);
+  html=html.replace(/(<meta name="apple-mobile-web-app-title" content=")[^"]*(")/g,`$1${esc(sh)}$2`);
+  html=html.split('NAMA_USAHA').join(biz);
+  html=html.split('ALAMAT_USAHA').join(addr||'');
+  html=html.split('NO_TELEPON').join(phone||'');
+  if(logoBase64){
+    html=html.replace(/let logoStrukBase64 = localStorage\.getItem\('spa_logo_struk'\) \|\| '';/,`let logoStrukBase64 = localStorage.getItem('spa_logo_struk') || '${logoBase64}';`);
+    html=html.replace(/<img src="logo\.png"/g,`<img src="${logoBase64}"`);
+    html=html.replace(/<link[^>]+rel=["'](?:shortcut icon|icon)["'][^>]*>/gi,'');
+    html=html.replace('<\/head>','  <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">\n  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">\n  <link rel="apple-touch-icon" href="/icon-192.png">\n<\/head>');
+  }
+
+  // ★ INJECT LICENSE — replace placeholders yang sudah ada di index.html ★
+  html=html.replace('<!DOCTYPE html>',`<!DOCTYPE html>\n<!-- KasirPro v4 | Tenant: ${biz} | ${new Date().toLocaleString('id-ID')} -->`);
+
+  // Inject Seller Supabase URL
+  html=html.replace(
+    /const _SELLER_SB_URL\s*=\s*'SELLER_SB_URL';[^\n]*/,
+    `const _SELLER_SB_URL  = '${sellerSbUrl}';   // Supabase seller`
+  );
+  // Inject Seller Supabase Anon Key (dipakai app kasir untuk verifikasi lisensi)
+  html=html.replace(
+    /const _SELLER_SB_ANON\s*=\s*'SELLER_SB_ANON_KEY';[^\n]*/,
+    `const _SELLER_SB_ANON = '${sellerSbAnon}'; // anon key seller — di-inject oleh generator`
+  );
+  // Inject License Key
+  html=html.replace(
+    /const _LICENSE_KEY\s*=\s*'LICENSE_KEY_VALUE';[^\n]*/,
+    `const _LICENSE_KEY    = '${licenseKey}'; // Key unik pembeli`
+  );
+  // Inject nomor WA seller ke script
+  html=html.replace(
+    /const sellerWa\s*=\s*'__SELLER_WA__';[^\n]*/g,
+    `const sellerWa = '${sellerWa}';  // di-inject oleh generator`
+  );
+  // Inject WA juga ke tombol overlay (href)
+  html=html.replace(
+    /id="_lic_wa_btn" href="#"/g,
+    `id="_lic_wa_btn" href="https://wa.me/${sellerWa}"`
+  );
+
+  setProgress(35,'resizing logo assets...');await delay(100);
+  let icon192=null,icon512=null,logoPng=null,thermal=null,ico=null;
+  if(logoBase64){
+    try{
+      icon512=await resizeImage(logoBase64,logoMime,512,512);
+      icon192=await resizeImage(logoBase64,logoMime,192,192);
+      logoPng=await resizeImage(logoBase64,logoMime,256,256);
+      thermal=await resizeImage(logoBase64,logoMime,200,200,true);
+      ico=await resizeImage(logoBase64,logoMime,32,32);
+    }catch(e){console.warn('Resize error:',e);}
+  }
+
+  setProgress(55,'generating manifest & sw...');await delay(100);
+  const manifest=JSON.stringify({name:biz,short_name:sh,description:`Aplikasi Kasir Digital — ${biz}`,start_url:'/',display:'standalone',background_color:'#0a0f0d',theme_color:'#10b981',orientation:'portrait-primary',icons:[{src:'/icon-192.png',sizes:'192x192',type:'image/png',purpose:'any maskable'},{src:'/icon-512.png',sizes:'512x512',type:'image/png',purpose:'any maskable'}]},null,2);
+  const swJs=`// KasirPro SW — ${biz}\nconst CACHE='kasirpro-${safeName}-v1';\nconst ASSETS=['/','/index.html','/manifest.json','/icon-192.png','/icon-512.png','/logo.png'];\nself.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS).catch(()=>{})));self.skipWaiting();});\nself.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))));self.clients.claim();});\nself.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(fetch(e.request).then(r=>{const c=r.clone();caches.open(CACHE).then(ca=>ca.put(e.request,c));return r;}).catch(()=>caches.match(e.request)));});`;
+  const headersFile=`/*\n  Cache-Control: public, max-age=0, must-revalidate\n  X-Frame-Options: DENY\n  X-Content-Type-Options: nosniff\n\n/sw.js\n  Cache-Control: no-cache\n\n/*.html\n  Cache-Control: no-cache\n\n/icon-*.png\n  Cache-Control: public, max-age=86400`;
+
+  setProgress(70,'saving to cloud...');await delay(100);
+  // Simpan password ke Supabase pembeli
+  let cloudOk=false;
+  if(passMode==='cloud'){
+    try{
+      const entries=[{role:'owner',hash:ownerHash},{role:'kasir',hash:kasirHash},{role:'pin',hash:pinHash}];
+      let allOk=true;
+      for(const entry of entries){
+        const rp=await fetch(`${url}/rest/v1/app_passwords?role=eq.${entry.role}`,{method:'PATCH',headers:{'apikey':key,'Authorization':'Bearer '+key,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify({hash:entry.hash,updated_at:new Date().toISOString()})});
+        if(rp.ok){const d=await rp.json().catch(()=>[]);if(d.length===0){const rpost=await fetch(`${url}/rest/v1/app_passwords`,{method:'POST',headers:{'apikey':key,'Authorization':'Bearer '+key,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({role:entry.role,hash:entry.hash,updated_at:new Date().toISOString()})});if(!rpost.ok)allOk=false;}}else{allOk=false;}
+      }
+      cloudOk=allOk;
+    }catch(e){console.warn('Cloud save error:',e);}
+  }
+
+  // ★ Simpan lisensi ke Supabase seller ★
+  setProgress(80,'saving license to seller DB...');await delay(100);
+  let expiresAtStr;
+  if(plan==='kustom'){
+    expiresAtStr=customExp;
+  } else {
+    const expDate=new Date(startDate);
+    if(plan==='3_bulan')expDate.setMonth(expDate.getMonth()+3);
+    else if(plan==='6_bulan')expDate.setMonth(expDate.getMonth()+6);
+    else if(plan==='unlimited'){expDate.setFullYear(2099);expDate.setMonth(11);expDate.setDate(31);}
+    else expDate.setFullYear(expDate.getFullYear()+1);
+    expiresAtStr=expDate.toISOString().split('T')[0];
+  }
+  let licSaved=false;
+  if(supa){
+    try{
+      const{error}=await supa.from('licenses').insert({business_name:biz,owner_name:ownerName,wa_number:waNum,plan,started_at:startDate,expires_at:expiresAtStr,is_active:true,license_key:licenseKey,deploy_url:deployUrl||null,supabase_url:url});
+      licSaved=!error;
+      if(error)console.warn('License insert error:',error.message);
+    }catch(e){console.warn('License save error:',e);}
+  }
+
+  setProgress(90,'bundling zip...');await delay(100);
+  const zip=new JSZip();
+  zip.file('index.html',html);
+  zip.file('manifest.json',manifest);
+  zip.file('sw.js',swJs);
+  zip.file('_headers',headersFile);
+  zip.file('credentials.txt',buildCreds(biz,sh,url,key,owner,kasir,pin,licenseKey,passMode,cloudOk,licSaved));
+  if(icon192)zip.file('icon-192.png',icon192,{base64:true});
+  if(icon512)zip.file('icon-512.png',icon512,{base64:true});
+  if(logoPng)zip.file('logo.png',logoPng,{base64:true});
+  if(thermal)zip.file('logo-thermal.png',thermal,{base64:true});
+  if(ico)zip.file('favicon.png',ico,{base64:true});
+
+  setProgress(96,'compressing...');
+  const zipBlob=await zip.generateAsync({type:'blob',compression:'DEFLATE',compressionOptions:{level:6}});
+  setProgress(100,'done!');await delay(200);
+
+  const zipUrl=URL.createObjectURL(zipBlob);
+  const dlEl=document.getElementById('dl-zip');
+  dlEl.href=zipUrl;dlEl.download=`kasirpro-${safeName}.zip`;
+  document.getElementById('dl-zip-size').textContent=fmtSize(zipBlob.size)+(logoBase64?' · 10 file':' · 5 file');
+  await delay(300);dlEl.click();
+
+  generatedBiz=biz;generatedKey=licenseKey;
+  document.getElementById('result-biz').textContent=biz;
+  document.getElementById('result-key').textContent=licenseKey;
+  document.getElementById('result-mode-msg').innerHTML=
+    (cloudOk?'✅ Password tersimpan ke Supabase pembeli.':'⚠️ Gagal simpan password.')+'<br>'+
+    (licSaved?'✅ Lisensi tersimpan ke database seller.':'⚠️ Lisensi belum tersimpan — tambah manual di tab Pembeli.');
+  document.getElementById('progress-wrap').style.display='none';
+  document.getElementById('btn-gen-text').textContent='✓ ZIP BERHASIL';
+  const rc=document.getElementById('result-card');
+  rc.style.display='block';rc.scrollIntoView({behavior:'smooth',block:'start'});
+  await loadData(); // refresh tabel pembeli
+  setStep(6);toast(licSaved?'// ZIP + lisensi berhasil! ✓':'// ZIP berhasil — cek lisensi manual');
+}
+
+function buildCreds(biz,sh,url,key,owner,kasir,pin,licKey,mode,cloudOk,licSaved){
+  const now=new Date().toLocaleString('id-ID',{dateStyle:'full',timeStyle:'short'});
+  const sellerBrand=localStorage.getItem('kp4_brand')||'KasirPro Seller';
+  const sellerJam=localStorage.getItem('kp4_jam')||'09.00–21.00 WIB';
+  return`╔══════════════════════════════════════════════════════╗
+║         KREDENSIAL APLIKASI — KasirPro v4             ║
+╚══════════════════════════════════════════════════════╝
+
+📅 Dibuat      : ${now}
+🏪 Nama Usaha  : ${biz}
+📱 PWA Title   : ${sh}
+☁️  Mode Pass   : ${mode==='cloud'?'Cloud (Supabase)':'Embed di HTML'}
+
+════════════════════════════════════════
+🔑 LICENSE
+════════════════════════════════════════
+
+  License Key   : ${licKey}
+  Status DB     : ${licSaved?'✅ Tersimpan di seller DB':'⚠️ Perlu tambah manual'}
+
+════════════════════════════════════════
+🔐 LOGIN APLIKASI
+════════════════════════════════════════
+
+  Password OWNER  : ${owner}
+  Password KASIR  : ${kasir}
+  PIN Reset Data  : ${pin}
+
+  ⚠️  Jangan share PIN Reset ke kasir!
+  ⚠️  Simpan file ini di tempat aman!
+
+  Status cloud : ${cloudOk?'✅ Password tersimpan di Supabase':'⚠️ Gagal — simpan manual via SQL'}
+
+════════════════════════════════════════
+☁️  KONFIGURASI SUPABASE
+════════════════════════════════════════
+
+  Project URL : ${url}
+  Anon Key    : ${key}
+
+════════════════════════════════════════
+📋 LANGKAH DEPLOY
+════════════════════════════════════════
+
+  1. Extract file ZIP
+  2. Copy bell.mp3 ke folder hasil extract
+  3. Upload SEMUA ISI folder ke Cloudflare Pages
+  4. Cloudflare → Caching → Purge Everything
+  5. Buka URL → Install PWA → Login
+  6. Kirim URL + credentials ini ke client via WA
+
+════════════════════════════════════════
+📞 SUPPORT
+════════════════════════════════════════
+
+  Seller   : ${sellerBrand}
+  WhatsApp : https://wa.me/${localStorage.getItem(WA_KEY)||'6281234567890'}
+  Jam kerja: ${sellerJam}
+
+══════════════════════════════════════════════════════`;
+}
+
+function copyResultKey(){
+  navigator.clipboard.writeText(generatedKey).then(()=>toast('// license key disalin ✓'));
+}
+
+// ════════════════════════════════════
+// HELPER — GENERATOR
+// ════════════════════════════════════
+function setProgress(pct,label){
+  document.getElementById('progress-fill').style.width=pct+'%';
+  document.getElementById('progress-text').textContent=label;
+  document.getElementById('progress-pct').textContent=pct+'%';
+}
+function setStep(n){
+  for(let i=1;i<=6;i++){
+    const num=document.getElementById(`snum-${i}`);
+    const lbl=document.getElementById(`slbl-${i}`);
+    const tr=document.getElementById(`tr-${i}`);
+    if(!num)continue;
+    if(i<n){num.className='tr-num done';num.textContent='✓';tr.className='tr-item done';}
+    else if(i===n){num.className='tr-num active';num.textContent=i;tr.className='tr-item active';}
+    else{num.className='tr-num';num.textContent=i;tr.className='tr-item';}
+  }
+}
+function enableStep(n){const el=document.getElementById(`step-${n}`);if(el)el.classList.remove('locked');}
+function generateAnother(){
+  document.getElementById('result-card').style.display='none';
+  ['f-owner-name','f-wa','f-deploy-url','f-biz-name','f-short-name','f-address','f-phone','f-sb-url','f-sb-key','f-owner-pass','f-kasir-pass','f-reset-pin'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('conn-status').innerHTML='';
+  document.getElementById('btn-gen-text').textContent='GENERATE & DOWNLOAD ZIP';
+  connOk=false;logoBase64='';
+  document.getElementById('pv-logo').textContent='Belum diupload';
+  document.getElementById('pv-logo').className='pvval';
+  setStep(2);updatePreview();
+  document.getElementById('step-2').scrollIntoView({behavior:'smooth'});
+}
+function openWA(){
+  const msg=encodeURIComponent(`Halo kak! 👋\n\nApp kasir *${generatedBiz}* sudah siap!\n\n🔗 Link: [ISI LINK CLOUDFLARE]\n\nCara pakai:\n1. Buka link di HP\n2. Tap Install / Add to Home Screen\n3. Login dengan password yang saya kirim\n\nAda pertanyaan? Balas WA ini 😊`);
+  window.open(`https://wa.me/?text=${msg}`,'_blank');
+}
+
+// Drag & drop
+const uzApp=document.getElementById('uz-app');
+uzApp.addEventListener('dragover',e=>{e.preventDefault();uzApp.classList.add('over');});
+uzApp.addEventListener('dragleave',()=>uzApp.classList.remove('over'));
+uzApp.addEventListener('drop',e=>{e.preventDefault();uzApp.classList.remove('over');const f=e.dataTransfer.files[0];if(f){const dt=new DataTransfer();dt.items.add(f);document.getElementById('fi-app').files=dt.files;handleAppUpload(document.getElementById('fi-app'));}});
+
+// Live preview pengaturan
+['cfg-url','cfg-wa','cfg-brand','cfg-jam','cfg-pass','cfg-pass2'].forEach(id=>{
+  document.getElementById(id)?.addEventListener('input',cfgUpdatePreview);
+});
+
+// ════════════════════════════════════
+// NAV & MODAL
+// ════════════════════════════════════
+// ════════════════════════════════════
+// ORDERS PAGE
+// ════════════════════════════════════
+let allOrders = [];
+let ordersFilter = 'all';
+
+async function loadOrders(){
+  if(!supa){ toast('// koneksi belum tersambung',true); return; }
+  document.getElementById('orders-loading').style.display='block';
+  document.getElementById('orders-table').style.display='none';
+  document.getElementById('empty-orders').style.display='none';
+  try{
+    const {data,error} = await supa.from('orders').select('*').order('created_at',{ascending:false});
+    if(error) throw error;
+    allOrders = data||[];
+    updateOrderBadge();
+    renderOrders();
+  } catch(e){
+    toast('// gagal load orders: '+e.message,true);
+  } finally {
+    document.getElementById('orders-loading').style.display='none';
+  }
+}
+
+function updateOrderBadge(){
+  const pending = allOrders.filter(o=>o.status==='pending').length;
+  const badge = document.getElementById('badge-orders');
+  if(pending>0){ badge.textContent=pending; badge.style.display='inline-flex'; }
+  else { badge.style.display='none'; }
+}
+
+function filterOrders(f){
+  ordersFilter=f;
+  ['all','pending','confirmed','rejected'].forEach(x=>{
+    const btn=document.getElementById('flt-'+x);
+    if(btn){ btn.style.borderColor=''; btn.style.color=''; }
+  });
+  const active=document.getElementById('flt-'+f);
+  if(active){ active.style.borderColor='var(--green)'; active.style.color='var(--green)'; }
+  renderOrders();
+}
+
+function renderOrders(){
+  const filtered = ordersFilter==='all' ? allOrders : allOrders.filter(o=>o.status===ordersFilter);
+  const tbody = document.getElementById('tbody-orders');
+  const empty = document.getElementById('empty-orders');
+  const tbl   = document.getElementById('orders-table');
+
+  if(!filtered.length){
+    tbl.style.display='none';
+    empty.style.display='block';
+    return;
+  }
+  tbl.style.display='';
+  empty.style.display='none';
+
+  tbody.innerHTML = filtered.map(o=>{
+    const statusPill = o.status==='pending'
+      ? '<span class="status-pill pill-pending">⏳ Pending</span>'
+      : o.status==='confirmed'
+      ? '<span class="status-pill pill-confirmed">✅ Confirmed</span>'
+      : '<span class="status-pill pill-rejected">❌ Rejected</span>';
+
+    const logoCell = o.logo_url
+      ? `<div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+          <img src="${o.logo_url}" class="order-logo-thumb" onclick="openLogoModal('${o.logo_url}')" title="Klik untuk lihat logo besar">
+          <a href="${o.logo_url}" download target="_blank" style="font-size:.55rem;font-family:var(--font-mono);color:var(--blue);text-decoration:none;display:flex;align-items:center;gap:2px" title="Download logo">⬇ unduh</a>
+         </div>`
+      : '<span style="color:var(--muted2);font-size:.65rem">—</span>';
+
+    const waktu = o.created_at ? new Date(o.created_at).toLocaleString('id-ID',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
+
+    const catatan = o.catatan
+      ? `<span style="font-size:.65rem;color:var(--muted2)" title="${o.catatan}">${o.catatan.substring(0,30)}${o.catatan.length>30?'...':''}</span>`
+      : '<span style="color:var(--muted2);font-size:.65rem">—</span>';
+
+    const aksiButtons = o.status==='pending' ? `
+      <div style="display:flex;gap:4px;flex-wrap:wrap">
+        <button class="order-action-btn btn-confirm" onclick="updateOrderStatus('${o.id}','confirmed')">✅ Konfirmasi</button>
+        <button class="order-action-btn btn-reject"  onclick="updateOrderStatus('${o.id}','rejected')">❌ Tolak</button>
+        <button class="order-action-btn btn-tolip"   onclick="provisionFromOrder('${o.order_id}','${(o.biz_name||'').replace(/'/g,"\\'")}','${(o.wa_number||'').replace(/[^0-9]/g,'')}')">🚀 Provision</button>
+        <button class="order-action-btn btn-tolip"   onclick="copyToGenerator('${o.id}')">⚡ Generator (Putus)</button>
+      </div>` : o.status==='confirmed' ? `
+      <div style="display:flex;gap:4px;flex-wrap:wrap">
+        <button class="order-action-btn btn-tolip" onclick="provisionFromOrder('${o.order_id}','${(o.biz_name||'').replace(/'/g,"\\'")}','${(o.wa_number||'').replace(/[^0-9]/g,'')}')">🚀 Provision</button>
+        <button class="order-action-btn btn-tolip" onclick="copyToGenerator('${o.id}')">⚡ Generator (Putus)</button>
+        <button class="order-action-btn btn-reject" onclick="updateOrderStatus('${o.id}','rejected')">❌ Tolak</button>
+      </div>` : `
+      <button class="order-action-btn btn-confirm" onclick="updateOrderStatus('${o.id}','pending')">↩ Pending</button>`;
+
+    const alamat = o.biz_address
+      ? `<span style="font-size:.65rem;color:var(--muted2)" title="${o.biz_address}">${o.biz_address.substring(0,25)}${o.biz_address.length>25?'...':''}</span>`
+      : '<span style="color:var(--muted2);font-size:.65rem">—</span>';
+
+    const telp = o.biz_phone
+      ? `<span style="font-family:var(--font-mono);font-size:.68rem;color:var(--text)">${o.biz_phone}</span>`
+      : '<span style="color:var(--muted2);font-size:.65rem">—</span>';
+
+    return `<tr>
+      <td><span style="font-family:var(--font-mono);font-size:.65rem;color:var(--green)">${o.order_id||'—'}</span></td>
+      <td><strong style="font-size:.78rem">${o.biz_name||'—'}</strong></td>
+      <td>${alamat}</td>
+      <td>${telp}</td>
+      <td style="font-size:.75rem">${o.owner_name||'—'}</td>
+      <td>
+        ${o.wa_number ? `<a href="https://wa.me/${o.wa_number.replace(/[^0-9]/g,'')}" target="_blank" style="color:var(--green);font-size:.7rem;font-family:var(--font-mono)">${o.wa_number}</a>` : '—'}
+      </td>
+      <td>${logoCell}</td>
+      <td>${catatan}</td>
+      <td style="font-size:.65rem;color:var(--muted2);white-space:nowrap">${waktu}</td>
+      <td>${statusPill}</td>
+      <td>${aksiButtons}</td>
+    </tr>`;
+  }).join('');
+}
+
+async function updateOrderStatus(id, newStatus){
+  if(!supa) return;
+  try{
+    const {error} = await supa.from('orders').update({status:newStatus}).eq('id',id);
+    if(error) throw error;
+    const idx = allOrders.findIndex(o=>o.id===id);
+    if(idx>-1) allOrders[idx].status = newStatus;
+    updateOrderBadge();
+    renderOrders();
+    toast(`// status diubah → ${newStatus}`);
+  } catch(e){
+    toast('// gagal update: '+e.message, true);
+  }
+}
+
+async function copyToGenerator(orderId){
+  const o = allOrders.find(x=>x.id===orderId);
+  if(!o) return;
+
+  showPage('generator');
+
+  setTimeout(async ()=>{
+    // ── STEP 2: Data Pembeli ──
+    const elOwner = document.getElementById('f-owner-name');
+    const elWa    = document.getElementById('f-wa');
+    if(elOwner) elOwner.value = o.owner_name||'';
+    if(elWa)    elWa.value    = (o.wa_number||'').replace(/[^0-9]/g,'');
+
+    // ── STEP 3: Identitas Usaha ──
+    const elBiz     = document.getElementById('f-biz-name');
+    const elShort   = document.getElementById('f-short-name');
+    const elAddress = document.getElementById('f-address');
+    const elPhone   = document.getElementById('f-phone');
+    if(elBiz)     elBiz.value     = o.biz_name||'';
+    if(elShort)   elShort.value   = (o.biz_name||'').substring(0,20);
+    if(elAddress) elAddress.value = o.biz_address||'';
+    if(elPhone)   elPhone.value   = o.biz_phone||'';
+
+    // ── STEP 5: Password default ──
+    const elOwnerPass = document.getElementById('f-owner-pass');
+    const elKasirPass = document.getElementById('f-kasir-pass');
+    const elResetPin  = document.getElementById('f-reset-pin');
+    if(elOwnerPass) elOwnerPass.value = '1234';
+    if(elKasirPass) elKasirPass.value = '1234';
+    if(elResetPin)  elResetPin.value  = '1234';
+
+    // ── Logo: fetch dari URL Supabase Storage ──
+    if(o.logo_url){
+      try{
+        const res  = await fetch(o.logo_url);
+        const blob = await res.blob();
+        const ext  = o.logo_url.split('.').pop().split('?')[0]||'png';
+        const file = new File([blob], `logo-${o.order_id}.${ext}`, {type: blob.type||'image/png'});
+        const dt   = new DataTransfer();
+        dt.items.add(file);
+        const fi = document.getElementById('fi-logo');
+        if(fi){
+          fi.files = dt.files;
+          fi.dispatchEvent(new Event('change'));
+        }
+      } catch(e){
+        console.warn('Gagal load logo dari URL:', e);
+      }
+    }
+
+    // Trigger updatePreview jika ada
+    if(typeof updatePreview === 'function') updatePreview();
+    if(typeof updateExpiry  === 'function') updateExpiry();
+
+    toast('// data order disalin ke Generator ⚡ — tinggal upload master, pilih paket, isi Supabase!');
+  }, 350);
+}
+
+function openLogoModal(url){
+  const overlay = document.getElementById('logo-modal-overlay');
+  document.getElementById('logo-modal-img').src = url;
+  overlay.classList.add('open');
+}
+
+// ════════════════════════════════════
+// TENANTS (MULTI-TENANT LANGGANAN)
+// ════════════════════════════════════
+let allTenants = [];
+
+async function loadTenants(){
+  if(!supa){ toast('// hubungkan Supabase dulu di Pengaturan', true); return; }
+  try{
+    const { data, error } = await supa
+      .from('businesses')
+      .select('id, slug, nama_usaha, plan, expires_at, is_active, created_at, staff(nama, role)')
+      .order('created_at', { ascending: false });
+    if(error) throw error;
+    allTenants = data || [];
+    renderTenants();
+
+    const expiringCount = allTenants.filter(t => tenantDaysLeft(t) !== null && tenantDaysLeft(t) <= 14 && tenantDaysLeft(t) >= 0 && t.is_active).length;
+    const badge = document.getElementById('badge-tenants');
+    if(expiringCount > 0){ badge.textContent = expiringCount; badge.style.display='inline-block'; }
+    else badge.style.display='none';
+
+  }catch(e){
+    toast('// gagal load tenants: ' + e.message, true);
+  }
+}
+
+function tenantDaysLeft(t){
+  if(!t.expires_at) return null; // unlimited
+  const ms = new Date(t.expires_at) - new Date();
+  return Math.floor(ms / 86400000);
+}
+
+function tenantStatusInfo(t){
+  const dl = tenantDaysLeft(t);
+  if(!t.is_active) return { key:'suspended', label:'⛔ Nonaktif', cls:'pill-rejected' };
+  if(dl === null) return { key:'active', label:'♾️ Unlimited', cls:'pill-confirmed' };
+  if(dl < 0) return { key:'expired', label:'❌ Expired', cls:'pill-rejected' };
+  if(dl <= 14) return { key:'expiring', label:`⚠️ ${dl} hari lagi`, cls:'pill-pending' };
+  return { key:'active', label:`✅ ${dl} hari lagi`, cls:'pill-confirmed' };
+}
+
+function renderTenants(){
+  const search = (document.getElementById('search-tenants').value||'').toLowerCase();
+  const filter = document.getElementById('filter-tenants').value;
+
+  let filtered = allTenants.filter(t =>
+    (t.nama_usaha||'').toLowerCase().includes(search) || (t.slug||'').toLowerCase().includes(search)
+  );
+  if(filter !== 'all'){
+    filtered = filtered.filter(t => tenantStatusInfo(t).key === filter);
+  }
+
+  const tbody = document.getElementById('tbody-tenants');
+  const empty = document.getElementById('empty-tenants');
+
+  if(!filtered.length){
+    tbody.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  const planLabels = {trial:'Trial','3_bulan':'3 Bulan','6_bulan':'6 Bulan','1_tahun':'1 Tahun',unlimited:'Unlimited',kustom:'Kustom'};
+
+  tbody.innerHTML = filtered.map(t => {
+    const owner = (t.staff||[]).find(s => s.role === 'owner');
+    const status = tenantStatusInfo(t);
+    const toggleLabel = t.is_active ? '⛔ Suspend' : '✅ Aktifkan';
+    const toggleClass = t.is_active ? 'btn-r' : 'btn-g';
+
+    return `<tr>
+      <td><strong style="font-size:.78rem">${t.nama_usaha||'—'}</strong></td>
+      <td><span style="font-family:var(--font-mono);font-size:.68rem;color:var(--green)">${t.slug||'—'}</span></td>
+      <td style="font-size:.75rem">${owner ? owner.nama : '—'}</td>
+      <td style="font-size:.72rem">${planLabels[t.plan]||t.plan}</td>
+      <td><span class="status-pill ${status.cls}">${status.label}</span></td>
+      <td><span class="status-pill ${status.cls}">${t.is_active ? 'Aktif' : 'Nonaktif'}</span></td>
+      <td>
+        <div style="display:flex;gap:4px;flex-wrap:wrap">
+          <button class="order-action-btn ${toggleClass}" onclick="confirmToggleTenant('${t.id}',${t.is_active},'${(t.nama_usaha||'').replace(/'/g,"\\'")}')">${toggleLabel}</button>
+          ${t.plan !== 'unlimited' ? `<button class="order-action-btn btn-tolip" onclick="openExtendTenant('${t.id}','${(t.nama_usaha||'').replace(/'/g,"\\'")}','${t.expires_at||''}')">📅 Perpanjang</button>` : ''}
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function confirmToggleTenant(id, isActive, namaUsaha){
+  document.getElementById('confirm-title').textContent = isActive ? 'Suspend Tenant?' : 'Aktifkan Tenant?';
+  document.getElementById('confirm-msg').textContent = isActive
+    ? `"${namaUsaha}" akan langsung terkunci — staff tidak bisa login sampai diaktifkan lagi.`
+    : `"${namaUsaha}" akan langsung bisa diakses staff lagi.`;
+  document.getElementById('confirm-ok').onclick = () => toggleTenantActive(id, isActive);
+  openModal('modal-confirm');
+}
+
+async function toggleTenantActive(id, currentlyActive){
+  try{
+    const { error } = await supa.from('businesses').update({ is_active: !currentlyActive }).eq('id', id);
+    if(error) throw error;
+    closeModal('modal-confirm');
+    toast(currentlyActive ? '// tenant di-suspend ✓' : '// tenant diaktifkan ✓');
+    loadTenants();
+  }catch(e){
+    toast('// gagal update status: ' + e.message, true);
+  }
+}
+
+function openExtendTenant(id, namaUsaha, currentExpiry){
+  document.getElementById('extend-tenant-id').value = id;
+  document.getElementById('extend-tenant-name').textContent = namaUsaha;
+  const d = currentExpiry ? new Date(currentExpiry) : new Date();
+  if (d < new Date()) d.setTime(Date.now()); // kalau sudah expired, mulai hitung dari hari ini
+  document.getElementById('extend-tenant-date').value = d.toISOString().split('T')[0];
+  openModal('modal-extend-tenant');
+}
+
+async function saveExtendTenant(){
+  const id = document.getElementById('extend-tenant-id').value;
+  const newDate = document.getElementById('extend-tenant-date').value;
+  if(!newDate){ toast('// pilih tanggal dulu', true); return; }
+  try{
+    const { error } = await supa.from('businesses').update({ expires_at: newDate, is_active: true }).eq('id', id);
+    if(error) throw error;
+    closeModal('modal-extend-tenant');
+    toast('// masa aktif diperpanjang ✓');
+    loadTenants();
+  }catch(e){
+    toast('// gagal perpanjang: ' + e.message, true);
+  }
+}
+
+// ════════════════════════════════════
+// PROVISIONING (MULTI-TENANT)
+// ════════════════════════════════════
+let _provLastResult = null;
+let _provOrderWaNumber = '';
+
+function provUpdateExpiryVisibility(){
+  const plan = document.getElementById('prov-plan').value;
+  document.getElementById('prov-expiry-field').style.display = (plan === 'unlimited') ? 'none' : 'block';
+}
+
+function provAutoExpiry(plan){
+  if (plan === 'unlimited') return null;
+  const days = { trial: 14, '3_bulan': 90, '6_bulan': 180, '1_tahun': 365, kustom: 30 }[plan] || 30;
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return d.toISOString().split('T')[0];
+}
+
+// Dipanggil dari tombol "🚀 Provision" di baris order (lihat renderOrders)
+function provisionFromOrder(orderId, bizName, waNumber){
+  resetProvisioningForm();
+  document.getElementById('prov-source-order-id').value = orderId;
+  document.getElementById('prov-order-id-label').textContent = orderId;
+  document.getElementById('prov-order-info').style.display = 'block';
+  document.getElementById('prov-nama-usaha').placeholder = bizName || '(dari order)';
+  _provOrderWaNumber = waNumber || '';
+  showPage('provisioning');
+  document.getElementById('prov-owner-email').focus();
+}
+
+function resetProvisioningForm(){
+  ['prov-nama-usaha','prov-owner-nama','prov-owner-email','prov-owner-password','prov-expires-at'].forEach(id=>{
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('prov-plan').value = 'trial';
+  document.getElementById('prov-source-order-id').value = '';
+  document.getElementById('prov-order-info').style.display = 'none';
+  document.getElementById('prov-result-card').style.display = 'none';
+  _provOrderWaNumber = '';
+  provUpdateExpiryVisibility();
+}
+
+async function submitProvisioning(){
+  const url = localStorage.getItem(SB_URL_KEY);
+  const adminSecret = localStorage.getItem(ADMIN_SECRET_KEY);
+  if (!url || !adminSecret) { toast('// Isi dulu Supabase URL & Admin Secret di Pengaturan', true); return; }
+
+  const namaUsaha   = document.getElementById('prov-nama-usaha').value.trim();
+  const ownerNama   = document.getElementById('prov-owner-nama').value.trim();
+  const ownerEmail  = document.getElementById('prov-owner-email').value.trim();
+  const ownerPass   = document.getElementById('prov-owner-password').value.trim();
+  const plan        = document.getElementById('prov-plan').value;
+  let expiresAt     = document.getElementById('prov-expires-at').value;
+  const sourceOrderId = document.getElementById('prov-source-order-id').value;
+
+  if (!ownerEmail) { toast('// Email Owner wajib diisi', true); return; }
+  if (!sourceOrderId && (!namaUsaha || !ownerNama)) {
+    toast('// Nama Usaha & Nama Owner wajib diisi kalau tidak dari order', true); return;
+  }
+  if (!expiresAt && plan !== 'unlimited') expiresAt = provAutoExpiry(plan);
+
+  const btn = document.getElementById('prov-submit-btn');
+  btn.disabled = true; btn.textContent = '⏳ Memproses...';
+
+  try {
+    const payload = {
+      plan,
+      expires_at: plan === 'unlimited' ? null : expiresAt,
+      owner_email: ownerEmail,
+    };
+    if (namaUsaha) payload.nama_usaha = namaUsaha;
+    if (ownerNama) payload.owner_nama = ownerNama;
+    if (ownerPass) payload.owner_password = ownerPass;
+    if (sourceOrderId) payload.source_order_id = sourceOrderId;
+
+    const res = await fetch(`${url}/functions/v1/provision-business`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-secret': adminSecret },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Gagal provisioning');
+
+    _provLastResult = data;
+    showProvResult(data);
+    toast('// tenant berhasil dibuat ✓');
+    loadOrders?.();
+
+  } catch(e) {
+    toast('// ' + e.message, true);
+  } finally {
+    btn.disabled = false; btn.textContent = '🚀 Provision Tenant Baru';
+  }
+}
+
+function showProvResult(data){
+  const brand = localStorage.getItem('kp4_brand') || 'KasirPro';
+  const loginUrl = localStorage.getItem(APP_URL_KEY) || '(belum diisi — lengkapi "Link App Kasir" di Pengaturan)';
+
+  document.getElementById('prov-result-box').innerHTML = `
+    <div><b>Business ID</b>: ${data.business_id}</div>
+    <div><b>Slug</b>: ${data.slug}</div>
+    <div><b>Email Login</b>: ${data.owner_email}</div>
+    <div><b>Password</b>: ${data.owner_password}</div>
+    <div><b>Link App</b>: ${loginUrl}</div>
+  `;
+  document.getElementById('prov-result-card').style.display = 'block';
+
+  if (_provOrderWaNumber) {
+    const msg = `Halo! Akun ${brand} kamu sudah siap 🎉\n\nLink aplikasi: ${loginUrl}\nEmail: ${data.owner_email}\nPassword: ${data.owner_password}\n\nLangsung buka link-nya & login pakai email+password di atas ya. Simpan baik-baik!`;
+    document.getElementById('prov-wa-btn').href = `https://wa.me/${_provOrderWaNumber}?text=${encodeURIComponent(msg)}`;
+    document.getElementById('prov-wa-btn').style.display = 'inline-flex';
+  } else {
+    document.getElementById('prov-wa-btn').style.display = 'none';
+  }
+}
+
+function copyProvResult(){
+  if (!_provLastResult) return;
+  const text = document.getElementById('prov-result-box').innerText;
+  navigator.clipboard.writeText(text)
+    .then(()=>toast('// kredensial disalin ✓'))
+    .catch(()=>toast('// gagal salin, copy manual', true));
+}
+
+function showPage(name){
+
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+name)?.classList.add('active');
+  document.getElementById('nav-'+name)?.classList.add('active');
+}
+function openModal(id){document.getElementById(id).classList.add('open')}
+function closeModal(id){document.getElementById(id).classList.remove('open')}
+document.querySelectorAll('.modal-overlay').forEach(el=>{
+  el.addEventListener('click',e=>{if(e.target===el)el.classList.remove('open');});
+});
+
+let _toastTimer;
+function toast(msg,isErr=false,dur=3000){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.className='toast show'+(isErr?' err':'');
+  clearTimeout(_toastTimer);
+  _toastTimer=setTimeout(()=>t.className='toast',dur);
+}
+</script>
+  <!-- Logo Modal -->
+  <div class="logo-modal-overlay" id="logo-modal-overlay" onclick="this.classList.remove('open')">
+    <img id="logo-modal-img" class="logo-modal-img" src="" alt="Logo Usaha">
+  </div>
+</body>
+</html>
