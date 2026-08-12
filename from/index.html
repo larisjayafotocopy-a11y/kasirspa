@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Order KasirPro — Aplikasi Kasir untuk Usahamu</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@300;400;600;700&family=Poppins:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --black:#080b0f;--dark:#0d1117;--card:#111820;--card2:#161f2b;
+  --border:rgba(255,255,255,.07);--border2:rgba(255,255,255,.12);
+  --green:#00e676;--green2:#69f0ae;--green3:rgba(0,230,118,.15);--green4:rgba(0,230,118,.06);
+  --amber:#ffb300;--red:#ff5252;--blue:#448aff;
+  --text:#e8edf5;--muted:#4a5568;--muted2:#718096;
+  --font-head:'Josefin Sans',sans-serif;--font-body:'Poppins',sans-serif;--font-mono:'JetBrains Mono',monospace;
+}
+html{scroll-behavior:smooth}
+body{font-family:var(--font-body);background:var(--black);color:var(--text);min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:999;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.03) 2px,rgba(0,0,0,.03) 4px);}
+.bg-grid{position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:linear-gradient(rgba(0,230,118,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(0,230,118,.04) 1px,transparent 1px);
+  background-size:60px 60px;mask-image:radial-gradient(ellipse 80% 80% at 50% 50%,black 40%,transparent 100%);}
+.glow-tl{position:fixed;top:-300px;left:-200px;width:700px;height:700px;border-radius:50%;
+  background:radial-gradient(circle,rgba(0,230,118,.07) 0%,transparent 60%);pointer-events:none;z-index:0;
+  animation:glowPulse 6s ease-in-out infinite alternate;}
+.glow-br{position:fixed;bottom:-200px;right:-200px;width:600px;height:600px;border-radius:50%;
+  background:radial-gradient(circle,rgba(68,138,255,.05) 0%,transparent 60%);pointer-events:none;z-index:0;}
+@keyframes glowPulse{from{opacity:.6;transform:scale(1)}to{opacity:1;transform:scale(1.1)}}
+@keyframes fadeInDown{from{opacity:0;transform:translateY(-20px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeInUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes checkPop{0%{transform:scale(0)}70%{transform:scale(1.2)}100%{transform:scale(1)}}
+
+.wrap{position:relative;z-index:1;max-width:640px;margin:0 auto;padding:40px 20px 80px}
+
+/* HEADER */
+.site-header{text-align:center;margin-bottom:48px;animation:fadeInDown .5s ease both}
+.logo-mark{font-family:var(--font-head);font-size:1.6rem;font-weight:700;letter-spacing:.06em;color:var(--green);display:inline-flex;align-items:center;gap:8px;margin-bottom:6px}
+.logo-dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 10px var(--green);animation:blink 2s step-end infinite;flex-shrink:0}
+.logo-ver{font-family:var(--font-mono);font-size:.6rem;color:var(--muted);letter-spacing:.1em;margin-bottom:20px}
+.hero-title{font-family:var(--font-head);font-size:1.8rem;font-weight:700;letter-spacing:.02em;line-height:1.25;margin-bottom:10px}
+.hero-title span{color:var(--green)}
+.hero-sub{font-size:.84rem;color:var(--muted2);line-height:1.7;max-width:480px;margin:0 auto}
+.feat-row{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:20px}
+.feat-pill{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;font-size:.68rem;font-family:var(--font-mono);font-weight:700;letter-spacing:.05em;background:var(--green4);color:var(--green2);border:1px solid rgba(0,230,118,.2)}
+
+/* PAKET */
+.paket-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px}
+.paket-card{background:var(--card);border:1.5px solid var(--border2);border-radius:12px;padding:16px 12px;text-align:center;cursor:pointer;transition:all .2s;position:relative;user-select:none}
+.paket-card:hover{border-color:rgba(0,230,118,.3);background:var(--card2)}
+.paket-card.selected{border-color:var(--green);background:var(--green4);box-shadow:0 0 24px rgba(0,230,118,.12)}
+.paket-card.selected::before{content:'✓';position:absolute;top:8px;right:10px;font-size:.65rem;color:var(--green);font-weight:700;font-family:var(--font-mono)}
+.paket-durasi{font-family:var(--font-head);font-size:1.1rem;font-weight:700;letter-spacing:.04em;color:var(--text);margin-bottom:4px}
+.paket-card.selected .paket-durasi{color:var(--green)}
+.paket-harga{font-family:var(--font-mono);font-size:.75rem;font-weight:700;color:var(--green2);margin-bottom:6px}
+.paket-note{font-size:.64rem;color:var(--muted2);line-height:1.4}
+.paket-unlimited{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;text-align:left;padding:14px 18px}
+.paket-unlimited .paket-durasi{font-size:1rem}
+.paket-unlimited-right{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.paket-badge{font-family:var(--font-mono);font-size:.6rem;font-weight:700;background:rgba(179,136,255,.15);color:#ce93d8;border:1px solid rgba(179,136,255,.3);border-radius:4px;padding:3px 8px;letter-spacing:.06em}
+
+/* FORM CARD */
+.form-card{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:20px;animation:fadeInUp .4s ease both}
+.form-card-head{padding:16px 22px;border-bottom:1px solid var(--border);background:linear-gradient(90deg,rgba(0,230,118,.03) 0%,transparent 60%);display:flex;align-items:center;gap:10px}
+.form-card-icon{font-size:1rem;width:28px;text-align:center}
+.form-card-title{font-family:var(--font-head);font-size:.88rem;font-weight:700;letter-spacing:.04em}
+.form-card-sub{font-size:.68rem;color:var(--muted2);margin-top:1px}
+.form-card-body{padding:22px}
+
+/* FIELDS */
+.field{margin-bottom:16px}
+.flabel{display:block;font-family:var(--font-head);font-size:.6rem;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--muted2);margin-bottom:7px}
+.req{color:var(--green)}
+.finput{width:100%;background:#0a0f14;border:1.5px solid var(--border2);border-radius:8px;padding:11px 14px;color:var(--text);font-size:.84rem;font-family:var(--font-mono);outline:none;transition:border-color .2s,box-shadow .2s;display:block}
+.finput.txt{font-family:var(--font-body)}
+.finput:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(0,230,118,.1)}
+.finput::placeholder{color:var(--muted);font-family:var(--font-body);font-size:.76rem}
+.finput.err-input{border-color:var(--red);box-shadow:0 0 0 3px rgba(255,82,82,.1)}
+.fhint{font-size:.65rem;color:var(--muted);margin-top:5px;line-height:1.5}
+.ferr{font-size:.65rem;color:var(--red);margin-top:5px;display:none;font-family:var(--font-mono)}
+.ferr.show{display:block}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+textarea.finput{resize:vertical;min-height:80px;font-family:var(--font-body);font-size:.82rem}
+
+/* METODE BAYAR */
+.bayar-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.bayar-card{background:#0a0f14;border:1.5px solid var(--border2);border-radius:10px;padding:14px 16px;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:10px;user-select:none}
+.bayar-card:hover{border-color:rgba(0,230,118,.3)}
+.bayar-card.selected{border-color:var(--green);background:var(--green4)}
+.bayar-icon{font-size:1.3rem;flex-shrink:0}
+.bayar-name{font-family:var(--font-head);font-size:.8rem;font-weight:700;letter-spacing:.04em}
+.bayar-card.selected .bayar-name{color:var(--green)}
+.bayar-detail{font-size:.66rem;color:var(--muted2);margin-top:2px}
+.bayar-radio{width:14px;height:14px;border-radius:50%;border:2px solid var(--border2);margin-left:auto;flex-shrink:0;transition:all .2s;position:relative}
+.bayar-card.selected .bayar-radio{border-color:var(--green);background:var(--green);box-shadow:0 0 6px rgba(0,230,118,.4)}
+
+/* INFO REKENING */
+.rek-box{background:#0a0f14;border:1px solid rgba(0,230,118,.15);border-left:3px solid var(--green);border-radius:8px;padding:14px 16px;margin-bottom:16px;display:none}
+.rek-box.show{display:block}
+.rek-title{font-family:var(--font-mono);font-size:.6rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--green);margin-bottom:10px}
+.rek-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);font-size:.78rem}
+.rek-row:last-child{border:none;padding-bottom:0}
+.rek-key{color:var(--muted2)}
+.rek-val{font-family:var(--font-mono);font-weight:700;color:var(--text)}
+.rek-copy{background:transparent;border:1px solid var(--border2);color:var(--muted2);border-radius:4px;padding:2px 8px;font-size:.6rem;cursor:pointer;font-family:var(--font-mono);transition:all .15s}
+.rek-copy:hover{border-color:var(--green);color:var(--green)}
+
+/* UPLOAD BUKTI */
+.upload-zone{border:1.5px dashed rgba(0,230,118,.2);border-radius:10px;padding:28px 16px;text-align:center;cursor:pointer;position:relative;background:rgba(0,230,118,.02);transition:all .2s;overflow:hidden}
+.upload-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.upload-zone:hover,.upload-zone.over{border-color:var(--green);background:var(--green4)}
+.upload-zone.done{border-style:solid;border-color:var(--green);background:rgba(0,230,118,.05)}
+.uz-icon{font-size:2rem;display:block;margin-bottom:8px;transition:transform .3s}
+.upload-zone:hover .uz-icon{transform:translateY(-3px)}
+.uz-title{font-family:var(--font-head);font-size:.86rem;font-weight:700;letter-spacing:.06em;margin-bottom:4px}
+.uz-sub{font-size:.68rem;color:var(--muted2)}
+.preview-bukti{width:100%;max-height:220px;object-fit:contain;border-radius:8px;margin-top:14px;border:1px solid var(--border);display:none}
+
+/* RINGKASAN */
+.summary-box{background:#0a0f14;border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:18px}
+.sum-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);font-size:.77rem}
+.sum-row:last-child{border-bottom:none;padding-top:10px;margin-top:4px}
+.sum-key{color:var(--muted2)}
+.sum-val{font-family:var(--font-mono);font-weight:700;color:var(--text);text-align:right;max-width:60%;word-break:break-all}
+.sum-total .sum-key{font-family:var(--font-head);font-weight:700;color:var(--text);font-size:.82rem}
+.sum-total .sum-val{color:var(--green);font-size:1rem}
+
+.infobox{background:rgba(0,230,118,.04);border:1px solid rgba(0,230,118,.12);border-left:3px solid var(--green);border-radius:8px;padding:11px 15px;font-size:.76rem;color:var(--muted2);line-height:1.65;margin-bottom:18px}
+.infobox strong{color:var(--green2)}
+.warnbox{background:rgba(255,179,0,.05);border:1px solid rgba(255,179,0,.15);border-left:3px solid var(--amber);border-radius:8px;padding:11px 15px;font-size:.76rem;color:var(--muted2);line-height:1.65;margin-bottom:16px}
+.warnbox strong{color:var(--amber)}
+
+/* TOMBOL */
+.btn-submit{width:100%;background:var(--green);color:var(--black);border:none;border-radius:10px;padding:15px;
+  font-family:var(--font-head);font-size:1rem;font-weight:700;letter-spacing:.08em;cursor:pointer;
+  transition:all .3s cubic-bezier(.34,1.56,.64,1);display:flex;align-items:center;justify-content:center;gap:10px}
+.btn-submit:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 10px 32px rgba(0,230,118,.35)}
+.btn-submit:disabled{background:var(--card2);color:var(--muted);cursor:not-allowed;transform:none;box-shadow:none}
+.spin{display:inline-block;width:16px;height:16px;border:2px solid rgba(0,0,0,.3);border-top-color:var(--black);border-radius:50%;animation:spin .7s linear infinite}
+
+/* SUCCESS */
+.success-screen{display:none;text-align:center;padding:60px 20px;animation:fadeInUp .5s ease both}
+.success-icon{font-size:4rem;margin-bottom:16px;animation:checkPop .5s ease both}
+.success-title{font-family:var(--font-head);font-size:1.5rem;font-weight:700;letter-spacing:.04em;color:var(--green);margin-bottom:10px}
+.success-sub{font-size:.84rem;color:var(--muted2);line-height:1.7;margin-bottom:28px}
+.success-detail{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;text-align:left;margin-bottom:24px}
+.success-detail .sum-row{font-size:.78rem}
+.order-id-badge{display:inline-flex;align-items:center;gap:6px;background:var(--green4);border:1px solid rgba(0,230,118,.25);border-radius:6px;padding:6px 14px;font-family:var(--font-mono);font-size:.75rem;font-weight:700;color:var(--green2);margin-bottom:20px;cursor:pointer;transition:all .2s}
+.order-id-badge:hover{background:var(--green3)}
+.wa-btn{display:inline-flex;align-items:center;gap:8px;background:#25d366;color:#fff;border:none;border-radius:10px;padding:13px 28px;font-family:var(--font-head);font-size:.9rem;font-weight:700;letter-spacing:.06em;cursor:pointer;transition:all .2s;text-decoration:none}
+.wa-btn:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(37,211,102,.35)}
+
+/* NEXT STEPS */
+.next-steps{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;text-align:left;margin-top:20px}
+.next-title{font-family:var(--font-mono);font-size:.6rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--green);margin-bottom:14px}
+.step-item{display:flex;align-items:flex-start;gap:12px;padding:8px 0;border-bottom:1px solid var(--border);font-size:.78rem;color:var(--muted2);line-height:1.5}
+.step-item:last-child{border:none;padding-bottom:0}
+.step-num{width:22px;height:22px;border-radius:50%;background:var(--green4);border:1px solid rgba(0,230,118,.3);color:var(--green);font-family:var(--font-mono);font-size:.65rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+
+/* FOOTER */
+.site-footer{text-align:center;margin-top:48px;font-size:.68rem;color:var(--muted);font-family:var(--font-mono);line-height:2}
+.site-footer a{color:var(--muted2);text-decoration:none}
+.site-footer a:hover{color:var(--green2)}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--card2);color:var(--text);border:1px solid var(--border2);border-radius:8px;padding:10px 20px;font-size:.78rem;font-family:var(--font-mono);opacity:0;transition:all .3s;z-index:1000;white-space:nowrap;pointer-events:none}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.err{border-color:rgba(255,82,82,.4);color:var(--red)}
+
+@media(max-width:480px){
+  .paket-grid{grid-template-columns:1fr 1fr}
+  .paket-unlimited{grid-column:1/-1}
+  .g2{grid-template-columns:1fr}
+  .bayar-grid{grid-template-columns:1fr}
+  .hero-title{font-size:1.4rem}
+}
+</style>
+</head>
+<body>
+<div class="bg-grid"></div>
+<div class="glow-tl"></div>
+<div class="glow-br"></div>
+
+<div class="wrap">
+
+  <!-- HEADER -->
+  <header class="site-header">
+    <div class="logo-mark"><div class="logo-dot"></div> KasirPro</div>
+    <div class="logo-ver">// Aplikasi Kasir Digital v4</div>
+    <h1 class="hero-title">Kasir digital untuk<br><span>usahamu, siap pakai.</span></h1>
+    <p class="hero-sub">Isi form di bawah — kami siapkan aplikasinya, kamu langsung bisa pakai. Tidak perlu keahlian teknis.</p>
+    <div class="feat-row">
+      <span class="feat-pill">📱 PWA — install di HP</span>
+      <span class="feat-pill">🖨️ Struk thermal</span>
+      <span class="feat-pill">📊 Laporan harian</span>
+      <span class="feat-pill">☁️ Data aman di cloud</span>
+      <span class="feat-pill">🔒 Multi-role login</span>
+    </div>
+  </header>
+
+  <div id="form-section">
+
+    <!-- DATA USAHA -->
+    <div class="form-card" style="animation-delay:.1s">
+      <div class="form-card-head">
+        <div class="form-card-icon">🏪</div>
+        <div>
+          <div class="form-card-title">Data Usaha</div>
+          <div class="form-card-sub">Nama ini akan muncul di aplikasi, laporan, dan struk</div>
+        </div>
+      </div>
+      <div class="form-card-body">
+        <div class="g2">
+          <div class="field">
+            <label class="flabel">Nama Usaha <span class="req">*</span></label>
+            <input type="text" class="finput txt" id="f-biz" placeholder="Salon Ayu Cantik" oninput="updateSummary()">
+            <div class="ferr" id="err-biz">Isi nama usaha kamu.</div>
+          </div>
+          <div class="field">
+            <label class="flabel">Nomor Telepon Usaha</label>
+            <input type="tel" class="finput" id="f-telp" placeholder="0812-3456-7890">
+            <div class="fhint">Muncul di struk thermal. Boleh dikosongkan.</div>
+          </div>
+        </div>
+        <div class="field">
+          <label class="flabel">Alamat Usaha</label>
+          <input type="text" class="finput txt" id="f-alamat" placeholder="Jl. Contoh No.1, Kota">
+          <div class="fhint">Muncul di bagian bawah struk thermal. Boleh dikosongkan.</div>
+        </div>
+        <div class="field">
+          <label class="flabel">Logo Usaha</label>
+          <div class="upload-zone" id="upload-zone-logo">
+            <input type="file" id="f-logo" accept=".png,.jpg,.jpeg,.svg" onchange="handleLogo(this)">
+            <span class="uz-icon">🖼️</span>
+            <div class="uz-title">Upload Logo Usaha</div>
+            <div class="uz-sub">Format PNG, JPG, SVG · Min. 512×512 px · Maks. 5MB</div>
+            <img id="preview-logo" class="preview-bukti" alt="Preview Logo">
+          </div>
+          <div class="fhint">Logo akan tampil di aplikasi kasir dan struk thermal. Boleh dikosongkan.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DATA PEMILIK -->
+    <div class="form-card" style="animation-delay:.13s">
+      <div class="form-card-head">
+        <div class="form-card-icon">👤</div>
+        <div>
+          <div class="form-card-title">Data Pemilik</div>
+          <div class="form-card-sub">Untuk konfirmasi order dan pengiriman aplikasi</div>
+        </div>
+      </div>
+      <div class="form-card-body">
+        <div class="g2">
+          <div class="field">
+            <label class="flabel">Nama Pemilik <span class="req">*</span></label>
+            <input type="text" class="finput txt" id="f-nama" placeholder="Budi Santoso" oninput="updateSummary()">
+            <div class="ferr" id="err-nama">Isi nama kamu.</div>
+          </div>
+          <div class="field">
+            <label class="flabel">Nomor WhatsApp <span class="req">*</span></label>
+            <input type="tel" class="finput" id="f-wa" placeholder="08123456789" oninput="updateSummary()">
+            <div class="fhint">Aplikasi dikirim ke WA ini</div>
+            <div class="ferr" id="err-wa">Isi nomor WhatsApp yang aktif.</div>
+          </div>
+        </div>
+        <div class="field">
+          <label class="flabel">Catatan Tambahan</label>
+          <textarea class="finput" id="f-catatan" placeholder="Contoh: ada logo yang mau dipakai, warna khusus, dll. (opsional)"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- RINGKASAN ORDER -->
+    <div class="form-card" style="animation-delay:.2s">
+      <div class="form-card-head">
+        <div class="form-card-icon">🧾</div>
+        <div>
+          <div class="form-card-title">Ringkasan Order</div>
+          <div class="form-card-sub">Pastikan data sudah benar sebelum kirim</div>
+        </div>
+      </div>
+      <div class="form-card-body">
+        <div class="summary-box">
+          <div class="sum-row">
+            <span class="sum-key">Nama Usaha</span>
+            <span class="sum-val" id="s-biz">—</span>
+          </div>
+          <div class="sum-row">
+            <span class="sum-key">Nama Pemilik</span>
+            <span class="sum-val" id="s-nama">—</span>
+          </div>
+          <div class="sum-row">
+            <span class="sum-key">WhatsApp</span>
+            <span class="sum-val" id="s-wa">—</span>
+          </div>
+        </div>
+
+        <div class="warnbox">
+          <strong>Catatan privasi:</strong> Data yang kamu isi hanya digunakan untuk setup aplikasi kasirmu. Kami tidak membagikan data ke pihak lain.
+        </div>
+
+        <button class="btn-submit" id="btn-submit" onclick="submitOrder()">
+          <span id="btn-text">✉ Kirim Order Sekarang</span>
+        </button>
+      </div>
+    </div>
+
+  </div><!-- end form-section -->
+
+  <!-- SUCCESS SCREEN -->
+  <div class="success-screen" id="success-screen">
+    <div class="success-icon">✅</div>
+    <div class="order-id-badge" onclick="copyOrderId()" title="Klik untuk salin">
+      📋 ORDER ID: <span id="s-order-id">—</span>
+    </div>
+    <div class="success-title">Order Berhasil Dikirim!</div>
+    <p class="success-sub">Terima kasih <strong id="sc-nama-hero"></strong>! Kami sudah terima ordermu. Kami akan segera menghubungimu via WhatsApp untuk langkah pembayaran. Setelah bayar, aplikasi kasir dikirim dalam <strong>1×24 jam</strong>.</p>
+
+    <div class="success-detail">
+      <div class="sum-row"><span class="sum-key">Order ID</span><span class="sum-val" id="sc-orderid">—</span></div>
+      <div class="sum-row"><span class="sum-key">Nama Usaha</span><span class="sum-val" id="sc-biz">—</span></div>
+      <div class="sum-row"><span class="sum-key">Pemilik</span><span class="sum-val" id="sc-nama">—</span></div>
+      <div class="sum-row"><span class="sum-key">WhatsApp</span><span class="sum-val" id="sc-wa">—</span></div>
+    </div>
+
+    <a class="wa-btn" id="wa-follow-btn" href="#" target="_blank">
+      📲 Konfirmasi via WhatsApp
+    </a>
+    <div style="margin-top:10px;font-size:.7rem;color:var(--muted);font-family:var(--font-mono)">
+      Klik tombol di atas untuk kirim konfirmasi ke kami via WA
+    </div>
+
+    <div class="next-steps">
+      <div class="next-title">// Langkah Selanjutnya</div>
+      <div class="step-item"><div class="step-num">1</div><div>Klik tombol WA di atas — pesan konfirmasi sudah terformat otomatis, tinggal kirim.</div></div>
+      <div class="step-item"><div class="step-num">2</div><div>Kami kirim informasi pembayaran via WA — bayar pakai metode yang kamu mau.</div></div>
+      <div class="step-item"><div class="step-num">3</div><div>Setelah pembayaran terkonfirmasi, kami mulai setup aplikasi kasirmu.</div></div>
+      <div class="step-item"><div class="step-num">4</div><div>Aplikasi selesai dalam <strong style="color:var(--green2)">1×24 jam</strong> — kami kirim link + panduan install via WA.</div></div>
+      <div class="step-item"><div class="step-num">5</div><div>Install PWA di HP, login, dan langsung pakai! 🎉</div></div>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    <div>KasirPro &copy; 2025 · Dibuat dengan ☕ untuk UMKM Indonesia</div>
+    <div>Ada pertanyaan? <a href="#" id="footer-wa">Chat via WhatsApp</a></div>
+  </footer>
+
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ════════════════════════════════════════
+// KONFIGURASI — EDIT BAGIAN INI
+// ════════════════════════════════════════
+const CONFIG = {
+  sellerWA: '6281234567890',       // Nomor WA kamu (628xxx tanpa +)
+  sellerBrand: 'KasirPro',         // Nama brand kamu
+
+  // Metode pembayaran — tambah/hapus/edit sesuai milikmu
+  metodeBayar: [
+    {
+      id: 'bca',
+      icon: '🏦',
+      nama: 'BCA',
+      detail: 'Transfer Bank',
+      norek: '1234567890',
+      atasnama: 'PT Kasir Pro Indonesia',
+    },
+    {
+      id: 'mandiri',
+      icon: '🏦',
+      nama: 'Mandiri',
+      detail: 'Transfer Bank',
+      norek: '9876543210',
+      atasnama: 'PT Kasir Pro Indonesia',
+    },
+    {
+      id: 'dana',
+      icon: '💙',
+      nama: 'DANA',
+      detail: 'E-Wallet',
+      norek: '081234567890',
+      atasnama: 'KasirPro',
+    },
+    {
+      id: 'gopay',
+      icon: '💚',
+      nama: 'GoPay',
+      detail: 'E-Wallet',
+      norek: '081234567890',
+      atasnama: 'KasirPro',
+    },
+  ],
+
+  // Supabase seller — isi dengan URL dan anon key project seller kamu
+  supabaseUrl: 'https://wqqlhthiknmaixxjrrqy.supabase.co',   // contoh: https://abcxyz.supabase.co
+  supabaseKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxcWxodGhpa25tYWl4eGpycnF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYxNTYwNTksImV4cCI6MjEwMTczMjA1OX0.yjoX1JvNpYjlw9gbPU6H4uwkpJMiIO_cjqxHgHWCufs',        // dari Project Settings → API → anon key
+  orderTable: 'orders',
+  logoBucket: 'logos',  // nama bucket di Supabase Storage
+};
+// ════════════════════════════════════════
+
+let currentOrderId = '';
+
+// ── Build metode bayar dari config ──
+function buildBayarGrid(){
+  const grid = document.getElementById('bayar-grid');
+  grid.innerHTML = CONFIG.metodeBayar.map(m => `
+    <div class="bayar-card" data-id="${m.id}" onclick="pilihBayar(this,'${m.id}')">
+      <span class="bayar-icon">${m.icon}</span>
+      <div>
+        <div class="bayar-name">${m.nama}</div>
+        <div class="bayar-detail">${m.detail}</div>
+      </div>
+      <div class="bayar-radio"></div>
+    </div>
+  `).join('');
+}
+
+function pilihBayar(el, id){
+  document.querySelectorAll('.bayar-card').forEach(c=>c.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedBayar = CONFIG.metodeBayar.find(m=>m.id===id);
+  hideErr('err-bayar');
+  showRekening(selectedBayar);
+  updateSummary();
+}
+
+function showRekening(m){
+  const box = document.getElementById('rek-box');
+  const content = document.getElementById('rek-content');
+  content.innerHTML = `
+    <div class="rek-row"><span class="rek-key">${m.detail === 'E-Wallet' ? 'No. Akun' : 'No. Rekening'}</span>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span class="rek-val" id="rek-norek">${m.norek}</span>
+        <button class="rek-copy" onclick="copyText('${m.norek}','Nomor disalin!')">Salin</button>
+      </div>
+    </div>
+    <div class="rek-row"><span class="rek-key">Atas Nama</span><span class="rek-val">${m.atasnama}</span></div>
+    <div class="rek-row"><span class="rek-key">Bank / Dompet</span><span class="rek-val">${m.nama}</span></div>
+  `;
+  box.classList.add('show');
+}
+
+// Simpan file logo untuk diupload saat submit
+let logoFile = null;
+
+function handleLogo(input){
+  const file = input.files[0];
+  if(!file) return;
+  if(file.size > 5*1024*1024){ toast('File logo terlalu besar (maks 5MB)',true); return; }
+  const allowed = ['image/png','image/jpeg','image/svg+xml'];
+  if(!allowed.includes(file.type)){ toast('Format harus PNG, JPG, atau SVG',true); return; }
+  logoFile = file; // simpan untuk diupload saat submit
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = document.getElementById('preview-logo');
+    img.src = e.target.result;
+    img.style.display = 'block';
+    const zone = document.getElementById('upload-zone-logo');
+    zone.classList.add('done');
+    document.querySelector('#upload-zone-logo .uz-title').textContent = '✓ Logo terupload';
+    document.querySelector('#upload-zone-logo .uz-sub').textContent = file.name;
+  };
+  reader.readAsDataURL(file);
+}
+
+// Upload logo ke Supabase Storage, return public URL
+async function uploadLogo(orderId) {
+  if(!logoFile) return null;
+  if(!CONFIG.supabaseUrl || CONFIG.supabaseUrl.includes('GANTI')) return null;
+  try {
+    const supa = supabase.createClient(CONFIG.supabaseUrl, CONFIG.supabaseKey);
+    const ext = logoFile.name.split('.').pop();
+    const path = `${orderId}.${ext}`;
+    const { error } = await supa.storage
+      .from(CONFIG.logoBucket)
+      .upload(path, logoFile, { upsert: true });
+    if(error){ console.warn('Logo upload error:', error.message); return null; }
+    const { data } = supa.storage.from(CONFIG.logoBucket).getPublicUrl(path);
+    return data.publicUrl;
+  } catch(e) {
+    console.warn('Logo upload failed:', e);
+    return null;
+  }
+}
+
+// drag over logo
+const uzLogo = document.getElementById('upload-zone-logo');
+if(uzLogo){
+  uzLogo.addEventListener('dragover', e=>{e.preventDefault();uzLogo.classList.add('over');});
+  uzLogo.addEventListener('dragleave', ()=>uzLogo.classList.remove('over'));
+  uzLogo.addEventListener('drop', e=>{
+    e.preventDefault();uzLogo.classList.remove('over');
+    const f=e.dataTransfer.files[0];
+    if(f){const dt=new DataTransfer();dt.items.add(f);document.getElementById('f-logo').files=dt.files;handleLogo(document.getElementById('f-logo'));}
+  });
+}
+
+function updateSummary(){
+  setText('s-biz', val('f-biz')||'—');
+  setText('s-nama', val('f-nama')||'—');
+  setText('s-wa', val('f-wa')||'—');
+}
+
+function validate(){
+  let ok=true;
+  const checks=[
+    {id:'f-biz',err:'err-biz',msg:'Isi nama usaha kamu.'},
+    {id:'f-nama',err:'err-nama',msg:'Isi nama kamu.'},
+    {id:'f-wa',err:'err-wa',msg:'Isi nomor WhatsApp yang aktif.'},
+  ];
+  checks.forEach(c=>{
+    if(!val(c.id)){showErr(c.err,c.msg);markErr(c.id);ok=false;}
+    else{hideErr(c.err);unmarkErr(c.id);}
+  });
+  return ok;
+}
+
+function genOrderId(){
+  const ts=Date.now().toString(36).toUpperCase();
+  const rnd=Math.random().toString(36).substring(2,5).toUpperCase();
+  return `KP-${ts}-${rnd}`;
+}
+
+async function submitOrder(){
+  if(!validate()) return;
+  const orderId=genOrderId();
+  currentOrderId=orderId;
+
+  const btn=document.getElementById('btn-submit');
+  const btnText=document.getElementById('btn-text');
+  btn.disabled=true;
+  btnText.innerHTML='<span class="spin"></span> Mengirim...';
+
+  // Upload logo dulu jika ada
+  let logoUrl = null;
+  if(logoFile){
+    btnText.innerHTML='<span class="spin"></span> Upload logo...';
+    logoUrl = await uploadLogo(orderId);
+  }
+
+  const payload={
+    order_id:orderId,
+    biz_name:val('f-biz'),
+    biz_phone:val('f-telp'),
+    biz_address:val('f-alamat'),
+    owner_name:val('f-nama'),
+    wa_number:val('f-wa'),
+    catatan:val('f-catatan'),
+    logo_url: logoUrl,   // URL logo dari Supabase Storage (null jika tidak upload)
+    status:'pending',
+  };
+
+  btnText.innerHTML='<span class="spin"></span> Menyimpan...';
+
+  // Simpan ke Supabase
+  if(CONFIG.supabaseUrl && !CONFIG.supabaseUrl.includes('GANTI')){
+    try{
+      await fetch(`${CONFIG.supabaseUrl}/rest/v1/${CONFIG.orderTable}`,{
+        method:'POST',
+        headers:{'Content-Type':'application/json','apikey':CONFIG.supabaseKey,'Authorization':`Bearer ${CONFIG.supabaseKey}`,'Prefer':'return=minimal'},
+        body:JSON.stringify(payload),
+      });
+    }catch(e){console.warn('Supabase:',e);}
+  }
+
+  showSuccess(orderId,payload);
+}
+
+function showSuccess(orderId, d){
+  setText('s-order-id',orderId);
+  setText('sc-orderid',orderId);
+  setText('sc-biz',d.biz_name);
+  setText('sc-nama',d.owner_name);
+  setText('sc-nama-hero',d.owner_name);
+  setText('sc-wa',d.wa_number);
+
+  const msg=encodeURIComponent(
+    `Halo kak! 👋\n\nSaya baru order aplikasi kasir di *${CONFIG.sellerBrand}*.\n\n`+
+    `📋 *Order ID:* ${orderId}\n`+
+    `🏪 *Usaha:* ${d.biz_name}\n`+
+    `👤 *Nama:* ${d.owner_name}\n`+
+    (d.catatan?`📝 *Catatan:* ${d.catatan}\n`:'')+
+    `\nMohon konfirmasi order saya ya kak. Terima kasih! 🙏`
+  );
+  document.getElementById('wa-follow-btn').href=`https://wa.me/${CONFIG.sellerWA}?text=${msg}`;
+  document.getElementById('footer-wa').href=`https://wa.me/${CONFIG.sellerWA}`;
+
+  document.getElementById('form-section').style.display='none';
+  document.getElementById('success-screen').style.display='block';
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function copyOrderId(){
+  navigator.clipboard.writeText(currentOrderId).then(()=>toast('// Order ID disalin ✓'));
+}
+
+function copyText(txt, msg){
+  navigator.clipboard.writeText(txt).then(()=>toast('// '+msg));
+}
+
+// Helpers
+function val(id){return document.getElementById(id)?.value?.trim()||'';}
+function setText(id,txt){const el=document.getElementById(id);if(el)el.textContent=txt;}
+function showErr(id,msg){const el=document.getElementById(id);if(el){el.textContent=msg;el.classList.add('show');}}
+function hideErr(id){document.getElementById(id)?.classList.remove('show');}
+function markErr(id){document.getElementById(id)?.classList.add('err-input');}
+function unmarkErr(id){document.getElementById(id)?.classList.remove('err-input');}
+
+let _tt;
+function toast(msg,isErr=false){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.className='toast show'+(isErr?' err':'');
+  clearTimeout(_tt);_tt=setTimeout(()=>t.className='toast',3500);
+}
+
+// Init
+updateSummary();
+document.getElementById('footer-wa').href=`https://wa.me/${CONFIG.sellerWA}`;
+</script>
+</body>
+</html>
