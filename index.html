@@ -3368,8 +3368,8 @@
        Project SATU INI dipakai SEMUA tenant (bukan per-customer lagi).
        Isi URL/Key project Supabase multi-tenant kamu (Fase 1-4) di sini.
     ============================================================ */
-    const SUPABASE_URL = 'GANTI_DENGAN_URL_PROJECT_MULTITENANT';
-    const SUPABASE_KEY = 'GANTI_DENGAN_ANON_KEY_PROJECT_MULTITENANT';
+    const SUPABASE_URL = 'https://wqqlhthiknmaixxjrrqy.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxcWxodGhpa25tYWl4eGpycnF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYxNTYwNTksImV4cCI6MjEwMTczMjA1OX0.yjoX1JvNpYjlw9gbPU6H4uwkpJMiIO_cjqxHgHWCufs';
     // Nomor WA admin/seller (kamu) — dipakai tombol "Hubungi Admin" di halaman
     // Lisensi & notifikasi masa langganan hampir habis. SATU nomor untuk semua
     // tenant (karena ini kontak kamu sebagai penyedia layanan, bukan per-tenant).
@@ -3377,7 +3377,7 @@
     // URL tempat booking-publik.html di-hosting (SATU domain untuk semua tenant —
     // tiap tenant beda cuma di parameter ?spa=slug-nya). Isi setelah booking-publik.html
     // selesai di-deploy (mis. https://booking.namadomainkamu.com/).
-    const _BOOKING_PUBLIC_BASE_URL = 'GANTI_URL_BOOKING_PUBLIK';
+    const _BOOKING_PUBLIC_BASE_URL = 'https://kasirspa.larisjayafotocopy.workers.dev/booking/';
 
     // ── SUPABASE MODE GUARD ──
     const _supabaseEnabled = !!(SUPABASE_URL && SUPABASE_URL.startsWith('https://') && SUPABASE_KEY && SUPABASE_KEY.length > 20);
