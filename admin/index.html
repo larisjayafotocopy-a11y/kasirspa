@@ -613,7 +613,7 @@ tr:hover td{background:rgba(255,255,255,.012)}
             </div>
             <div class="field">
               <label class="flabel">Paket <span class="req">*</span></label>
-              <select class="finput" id="prov-plan" onchange="provUpdateExpiryVisibility()">
+              <select class="finput" id="prov-plan" onchange="provUpdateExpiryVisibility();showProvHargaHint()">
                 <option value="trial">Trial</option>
                 <option value="3_bulan">3 Bulan</option>
                 <option value="6_bulan">6 Bulan</option>
@@ -621,6 +621,7 @@ tr:hover td{background:rgba(255,255,255,.012)}
                 <option value="unlimited">Unlimited</option>
                 <option value="kustom">Kustom</option>
               </select>
+              <div class="fhint" id="prov-harga-hint" style="color:var(--green2);font-weight:600"></div>
             </div>
             <div class="field" id="prov-expiry-field">
               <label class="flabel">Tanggal Expired</label>
@@ -944,12 +945,47 @@ tr:hover td{background:rgba(255,255,255,.012)}
               <input class="finput txt" id="cfg-jam" placeholder="09.00–21.00 WIB" oninput="cfgCheckReady()">
               <div class="fhint">Muncul di credentials.txt yang dikirim ke pembeli</div>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── CARD HARGA PAKET ── -->
+      <div class="card">
+        <div class="card-head">
+          <span class="step-badge">💰</span>
+          <div>
+            <div class="card-title">Harga Paket</div>
+            <div class="card-sub">Isi sekali, otomatis kepakai di Provisioning (Tenant) & Generator (Jual Putus)</div>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="g2">
             <div class="field">
-              <label class="flabel">Harga Paket (opsional)</label>
-              <input class="finput txt" id="cfg-harga" placeholder="3bln:150rb | 6bln:250rb | 1thn:400rb | unlimited:Harga | kustom:Nego" oninput="cfgCheckReady()">
-              <div class="fhint">Ditampilkan di halaman generator sebagai referensi harga paket</div>
+              <label class="flabel">Trial</label>
+              <input class="finput txt" id="harga-trial" placeholder="Rp 0 (gratis)">
+            </div>
+            <div class="field">
+              <label class="flabel">3 Bulan</label>
+              <input class="finput txt" id="harga-3_bulan" placeholder="mis. Rp 150.000">
+            </div>
+            <div class="field">
+              <label class="flabel">6 Bulan</label>
+              <input class="finput txt" id="harga-6_bulan" placeholder="mis. Rp 250.000">
+            </div>
+            <div class="field">
+              <label class="flabel">1 Tahun</label>
+              <input class="finput txt" id="harga-1_tahun" placeholder="mis. Rp 400.000">
+            </div>
+            <div class="field">
+              <label class="flabel">Unlimited</label>
+              <input class="finput txt" id="harga-unlimited" placeholder="mis. Rp 1.500.000">
+            </div>
+            <div class="field">
+              <label class="flabel">Kustom</label>
+              <input class="finput txt" id="harga-kustom" placeholder="mis. Nego / Hubungi kami">
             </div>
           </div>
+          <div class="fhint">Bisa diubah kapan saja — tinggal ganti angkanya di sini, klik Simpan Pengaturan, langsung update di semua tempat.</div>
         </div>
       </div>
 
@@ -1225,7 +1261,6 @@ function initApp(){
   const wa    = localStorage.getItem(WA_KEY)||'';
   const brand = localStorage.getItem('kp4_brand')||'';
   const jam   = localStorage.getItem('kp4_jam')||'09.00–21.00 WIB';
-  const harga = localStorage.getItem('kp4_harga')||'';
   document.getElementById('cfg-url').value   = url||'';
   document.getElementById('cfg-key').value   = key||'';
   document.getElementById('cfg-anon').value  = anon;
@@ -1234,15 +1269,21 @@ function initApp(){
   document.getElementById('cfg-wa').value    = wa;
   document.getElementById('cfg-brand').value = brand;
   document.getElementById('cfg-jam').value   = jam;
-  document.getElementById('cfg-harga').value = harga;
+  ['trial','3_bulan','6_bulan','1_tahun','unlimited','kustom'].forEach(p=>{
+    const el = document.getElementById('harga-'+p);
+    if(el) el.value = localStorage.getItem('kp4_harga_'+p) || '';
+  });
   document.getElementById('sql-display').textContent = SETUP_SQL;
   document.getElementById('f-start').value = new Date().toISOString().split('T')[0];
   document.getElementById('m-start').value = new Date().toISOString().split('T')[0];
   updateExpiry();
   cfgUpdatePreview();
+  showHargaHint();
+  showProvHargaHint();
   if(url && key){
     supa = supabase.createClient(url, key);
     loadData();
+    loadConfigFromServer(); // pulihkan setting terbaru dari server (kalau ada yang lebih baru dari localStorage)
     document.getElementById('s-online-txt').textContent = 'connected';
   } else {
     document.getElementById('s-online-txt').textContent = 'no config';
@@ -1308,12 +1349,15 @@ async function saveConfig(){
   const wa    = document.getElementById('cfg-wa').value.trim();
   const brand = document.getElementById('cfg-brand').value.trim();
   const jam   = document.getElementById('cfg-jam').value.trim();
-  const harga = document.getElementById('cfg-harga').value.trim();
   const pass  = document.getElementById('cfg-pass').value.trim();
   const pass2 = document.getElementById('cfg-pass2').value.trim();
   const anon  = document.getElementById('cfg-anon').value.trim();
   const adminSecret = document.getElementById('cfg-admin-secret').value.trim();
   const appUrl = document.getElementById('cfg-app-url').value.trim();
+  const hargaPlans = ['trial','3_bulan','6_bulan','1_tahun','unlimited','kustom'];
+  const hargaValues = {};
+  hargaPlans.forEach(p => { hargaValues[p] = document.getElementById('harga-'+p).value.trim(); });
+
   if(!url||!key){toast('// Supabase URL dan Key wajib diisi',true);return;}
   if(!anon){toast('// Anon Key wajib diisi agar lisensi bisa terbaca oleh app pembeli',true);return;}
   if(!adminSecret){toast('// Admin Secret wajib diisi agar Provisioning bisa dipakai',true);return;}
@@ -1326,7 +1370,7 @@ async function saveConfig(){
   document.getElementById('cfg-save-txt').textContent='MENYIMPAN...';
   document.getElementById('cfg-prog-wrap').style.display='block';
 
-  setCfgProgress(30,'menyimpan konfigurasi...');await delay(200);
+  setCfgProgress(20,'menyimpan konfigurasi lokal...');await delay(200);
   localStorage.setItem(SB_URL_KEY,url);
   localStorage.setItem(SB_KEY_KEY,key);
   localStorage.setItem(SB_ANON_KEY,anon);
@@ -1335,19 +1379,68 @@ async function saveConfig(){
   localStorage.setItem(WA_KEY,wa);
   localStorage.setItem('kp4_brand',brand);
   localStorage.setItem('kp4_jam',jam||'09.00–21.00 WIB');
-  localStorage.setItem('kp4_harga',harga);
+  hargaPlans.forEach(p => localStorage.setItem('kp4_harga_'+p, hargaValues[p]));
   if(pass) localStorage.setItem(PASS_KEY,pass);
 
-  setCfgProgress(70,'menginisialisasi Supabase...');await delay(200);
+  setCfgProgress(50,'menginisialisasi Supabase...');await delay(200);
   supa = supabase.createClient(url, key);
+
+  // ── Simpan SEMUA setting ke server (tabel admin_settings) ──
+  // Supaya kalau cache browser dihapus / ganti device, tinggal isi ulang
+  // URL+Key (wajib, itu kredensial buat NYAMBUNG ke server ini), sisanya
+  // otomatis kepulihkan dari sini — tidak perlu ketik ulang semua manual.
+  setCfgProgress(75,'menyimpan ke server...');await delay(150);
+  try{
+    const rows = [
+      {key:'anon_key', value:anon},
+      {key:'admin_secret', value:adminSecret},
+      {key:'app_url', value:appUrl},
+      {key:'wa_seller', value:wa},
+      {key:'brand', value:brand},
+      {key:'jam_operasional', value:jam||'09.00–21.00 WIB'},
+      ...hargaPlans.map(p => ({key:'harga_'+p, value:hargaValues[p]})),
+    ];
+    const {error:saveErr} = await supa.from('admin_settings').upsert(rows,{onConflict:'key'});
+    if(saveErr) console.warn('Gagal simpan ke server:', saveErr.message);
+  }catch(e){ console.warn('Gagal simpan ke server:', e.message); }
 
   setCfgProgress(100,'selesai!');await delay(300);
   document.getElementById('cfg-prog-wrap').style.display='none';
   document.getElementById('s-online-txt').textContent='connected';
   document.getElementById('cfg-save-txt').textContent='✓ TERSIMPAN';
-  toast('// pengaturan disimpan ✓');
+  toast('// pengaturan disimpan (lokal + server) ✓');
   setTimeout(()=>{document.getElementById('cfg-save-txt').textContent='SIMPAN PENGATURAN';btn.disabled=false;},2000);
   loadData();
+}
+
+// ── Pulihkan setting dari server (dipanggil setelah supa client siap) ──
+// URL+Key sendiri TIDAK bisa dipulihkan dari sini (chicken-and-egg — butuh
+// URL+Key itu sendiri buat konek ke server yang menyimpannya). Itu satu-
+// satunya yang tetap wajib diketik ulang kalau cache browser bersih total.
+async function loadConfigFromServer(){
+  if(!supa) return;
+  try{
+    const {data, error} = await supa.from('admin_settings').select('key,value');
+    if(error || !data) return;
+    const map = {};
+    data.forEach(row => { map[row.key] = row.value; });
+
+    if(map.anon_key)         { localStorage.setItem(SB_ANON_KEY, map.anon_key); document.getElementById('cfg-anon').value = map.anon_key; }
+    if(map.admin_secret)     { localStorage.setItem(ADMIN_SECRET_KEY, map.admin_secret); document.getElementById('cfg-admin-secret').value = map.admin_secret; }
+    if(map.app_url)          { localStorage.setItem(APP_URL_KEY, map.app_url); document.getElementById('cfg-app-url').value = map.app_url; }
+    if(map.wa_seller)        { localStorage.setItem(WA_KEY, map.wa_seller); document.getElementById('cfg-wa').value = map.wa_seller; }
+    if(map.brand)            { localStorage.setItem('kp4_brand', map.brand); document.getElementById('cfg-brand').value = map.brand; }
+    if(map.jam_operasional)  { localStorage.setItem('kp4_jam', map.jam_operasional); document.getElementById('cfg-jam').value = map.jam_operasional; }
+
+    ['trial','3_bulan','6_bulan','1_tahun','unlimited','kustom'].forEach(p=>{
+      const k = 'harga_'+p;
+      if(map[k]){ localStorage.setItem('kp4_harga_'+p, map[k]); const el=document.getElementById('harga-'+p); if(el) el.value = map[k]; }
+    });
+
+    cfgUpdatePreview();
+    showHargaHint();
+    showProvHargaHint();
+  }catch(e){ console.warn('Gagal load config dari server:', e.message); }
 }
 function setCfgProgress(pct,label){
   document.getElementById('cfg-prog-fill').style.width=pct+'%';
@@ -1756,26 +1849,26 @@ function updatePreview(){
   checkReady();
 }
 
+function getHargaPaket(){
+  const plans = ['trial','3_bulan','6_bulan','1_tahun','unlimited','kustom'];
+  const result = {};
+  plans.forEach(p => { result[p] = localStorage.getItem('kp4_harga_'+p) || ''; });
+  return result;
+}
+
 function showHargaHint(){
   const plan = document.getElementById('f-plan')?.value;
-  const harga = localStorage.getItem('kp4_harga') || '';
+  const map = getHargaPaket();
   const el = document.getElementById('harga-hint');
   if (!el) return;
-  if (!harga) { el.textContent = ''; return; }
-  // Parse format: 3bln:150rb | 6bln:250rb | 1thn:400rb | unlimited:Harga
-  const map = {};
-  harga.split('|').forEach(function(part) {
-    const kv = part.trim().split(':');
-    if (kv.length >= 2) {
-      const k = kv[0].trim().toLowerCase();
-      const v = kv.slice(1).join(':').trim();
-      if (k.includes('3')) map['3_bulan'] = v;
-      else if (k.includes('6')) map['6_bulan'] = v;
-      else if (k.includes('thn') || k.includes('1t')) map['1_tahun'] = v;
-      else if (k.includes('un') || k.includes('lim')) map['unlimited'] = v;
-      else if (k.includes('kus')) map['kustom'] = v;
-    }
-  });
+  el.textContent = map[plan] ? '💰 Harga: ' + map[plan] : '';
+}
+
+function showProvHargaHint(){
+  const plan = document.getElementById('prov-plan')?.value;
+  const map = getHargaPaket();
+  const el = document.getElementById('prov-harga-hint');
+  if (!el) return;
   el.textContent = map[plan] ? '💰 Harga: ' + map[plan] : '';
 }
 
@@ -2483,6 +2576,7 @@ function resetProvisioningForm(){
   document.getElementById('prov-result-card').style.display = 'none';
   _provOrderWaNumber = '';
   provUpdateExpiryVisibility();
+  showProvHargaHint();
 }
 
 async function submitProvisioning(){
