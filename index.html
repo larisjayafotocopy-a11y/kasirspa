@@ -3368,8 +3368,8 @@
        Project SATU INI dipakai SEMUA tenant (bukan per-customer lagi).
        Isi URL/Key project Supabase multi-tenant kamu (Fase 1-4) di sini.
     ============================================================ */
-    const SUPABASE_URL = 'https://wqqlhthiknmaixxjrrqy.supabase.co';
-    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxcWxodGhpa25tYWl4eGpycnF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYxNTYwNTksImV4cCI6MjEwMTczMjA1OX0.yjoX1JvNpYjlw9gbPU6H4uwkpJMiIO_cjqxHgHWCufs';
+    const SUPABASE_URL = 'GANTI_DENGAN_URL_PROJECT_MULTITENANT';
+    const SUPABASE_KEY = 'GANTI_DENGAN_ANON_KEY_PROJECT_MULTITENANT';
     // Nomor WA admin/seller (kamu) — dipakai tombol "Hubungi Admin" di halaman
     // Lisensi & notifikasi masa langganan hampir habis. SATU nomor untuk semua
     // tenant (karena ini kontak kamu sebagai penyedia layanan, bukan per-tenant).
@@ -3377,7 +3377,7 @@
     // URL tempat booking-publik.html di-hosting (SATU domain untuk semua tenant —
     // tiap tenant beda cuma di parameter ?spa=slug-nya). Isi setelah booking-publik.html
     // selesai di-deploy (mis. https://booking.namadomainkamu.com/).
-    const _BOOKING_PUBLIC_BASE_URL = 'https://kasirspa.larisjayafotocopy.workers.dev/booking/';
+    const _BOOKING_PUBLIC_BASE_URL = 'GANTI_URL_BOOKING_PUBLIK';
 
     // ── SUPABASE MODE GUARD ──
     const _supabaseEnabled = !!(SUPABASE_URL && SUPABASE_URL.startsWith('https://') && SUPABASE_KEY && SUPABASE_KEY.length > 20);
@@ -6255,7 +6255,7 @@
     }
 
     function printStruk({ inv, customerName, startStr, endStr, worker, date, services, subtotal, discount, total, method }) {
-        const logoTag = logoStrukBase64 ? `<img src="${logoStrukBase64}" style="width:80px;display:block;margin:0 auto 5px;">` : '';
+        const logoTag = currentBusiness?.logo_url ? `<img src="${currentBusiness.logo_url}" style="width:80px;display:block;margin:0 auto 5px;">` : '';
 
         const receiptStyle = `
             <style>
@@ -13073,22 +13073,10 @@
 
 
 
-        // Logo untuk struk — load dari file lokal, cache di localStorage
-    let logoStrukBase64 = localStorage.getItem('spa_logo_struk') || '';
-    (async () => {
-        try {
-            const res = await fetch('logo-thermal.png');
-            if (res.ok) {
-                const blob = await res.blob();
-                const reader = new FileReader();
-                reader.onload = () => {
-                    logoStrukBase64 = reader.result;
-                    localStorage.setItem('spa_logo_struk', reader.result);
-                };
-                reader.readAsDataURL(blob);
-            }
-        } catch(e) {}
-    })();
+        // Logo untuk struk — dari currentBusiness.logo_url (multi-tenant),
+        // bukan lagi file statis per-tenant hasil generate seperti dulu.
+        // Sengaja tidak dikonversi ke base64 — cukup <img src="URL Storage">
+        // biasa, browser yang urus fetch-nya saat proses print/preview struk.
 
     // Render awal dari cache lokal dulu agar tidak blank
     document.getElementById('bill-inv-display').value = previewInvoiceNumber();
