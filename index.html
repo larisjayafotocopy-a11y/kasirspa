@@ -1306,7 +1306,7 @@
 
         <div class="login-card">
             <div class="text-center mb-8">
-                <img src="logo.png" class="w-16 h-16 mx-auto mb-3 object-contain" onerror="this.style.display='none'">
+                <img id="login-brand-logo" src="" class="w-16 h-16 mx-auto mb-3 object-contain" style="display:none">
                 <h1 class="text-2xl font-bold text-red-500" id="login-brand-title">KasirPro</h1>
                 <p class="text-slate-400 text-sm mt-1">Silakan masuk untuk melanjutkan</p>
             </div>
@@ -2873,8 +2873,9 @@
                             <span style="font-size:1rem">👥</span>
                             <span style="font-size:.78rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#5b21b6">Kelola Staff</span>
                         </div>
-                        <button onclick="openAddStaffModal()" style="background:#7c3aed;color:white;border:none;border-radius:10px;padding:8px 16px;font-size:.78rem;font-weight:700;cursor:pointer">➕ Tambah Kasir</button>
+                        <button id="add-staff-btn-trigger" onclick="openAddStaffModal()" style="background:#7c3aed;color:white;border:none;border-radius:10px;padding:8px 16px;font-size:.78rem;font-weight:700;cursor:pointer">➕ Tambah Kasir</button>
                     </div>
+                    <div style="padding:8px 18px 0;font-size:.7rem;color:#94a3b8">Maksimal 1 akun Kasir aktif per usaha. Nonaktifkan yang lama dulu kalau mau ganti orang.</div>
                     <div style="padding:16px 18px">
                         <div id="staff-list-container" style="display:flex;flex-direction:column;gap:8px">
                             <div style="text-align:center;padding:20px;color:#94a3b8;font-size:.82rem">Memuat daftar staff...</div>
@@ -3373,7 +3374,12 @@
     // Nomor WA admin/seller (kamu) — dipakai tombol "Hubungi Admin" di halaman
     // Lisensi & notifikasi masa langganan hampir habis. SATU nomor untuk semua
     // tenant (karena ini kontak kamu sebagai penyedia layanan, bukan per-tenant).
-    const _ADMIN_WA = 'GANTI_NOMOR_WA_ADMIN'; // format: 628xxxxxxxxxx
+    const _ADMIN_WA = '6282118236175'; // format: 628xxxxxxxxxx
+    // Logo BRAND kamu sendiri (bukan logo tenant) — tampil di layar login,
+    // SEBELUM ada yang login (jadi belum tahu ini tenant siapa). Sama untuk
+    // SEMUA tenant. Isi dengan URL gambar (bisa upload ke Supabase Storage,
+    // Imgur, dsb — apa saja yang bisa diakses publik).
+    const _BRAND_LOGO_URL = 'https://wqqlhthiknmaixxjrrqy.supabase.co/storage/v1/object/public/brand%20logo/alzh%20copy-03-01.svg';
     // URL tempat booking-publik.html di-hosting (SATU domain untuk semua tenant —
     // tiap tenant beda cuma di parameter ?spa=slug-nya). Isi setelah booking-publik.html
     // selesai di-deploy (mis. https://booking.namadomainkamu.com/).
@@ -10051,6 +10057,23 @@
             const { data, error } = await supa.from('staff').select('*').order('created_at', { ascending: true });
             if (error) throw error;
 
+            // Batas 1 akun Kasir aktif — toggle tombol "Tambah Kasir" sesuai kondisi
+            const activeKasirCount = (data || []).filter(s => s.role === 'kasir' && s.is_active).length;
+            const addBtn = document.getElementById('add-staff-btn-trigger');
+            if (addBtn) {
+                if (activeKasirCount >= 1) {
+                    addBtn.disabled = true;
+                    addBtn.textContent = '✅ Sudah Ada 1 Kasir Aktif';
+                    addBtn.style.opacity = '.6';
+                    addBtn.style.cursor = 'not-allowed';
+                } else {
+                    addBtn.disabled = false;
+                    addBtn.textContent = '➕ Tambah Kasir';
+                    addBtn.style.opacity = '1';
+                    addBtn.style.cursor = 'pointer';
+                }
+            }
+
             if (!data || data.length === 0) {
                 container.innerHTML = '<div style="text-align:center;padding:20px;color:#94a3b8;font-size:.82rem">Belum ada staff</div>';
                 return;
@@ -13084,6 +13107,16 @@
             if (_invTxt) _invTxt.textContent = previewInvoiceNumber();
     renderAll();
     initPOSCalculator();
+
+    // ── Pasang logo brand di layar login (sama untuk semua tenant) ──
+    if (_BRAND_LOGO_URL && _BRAND_LOGO_URL !== 'GANTI_URL_LOGO_BRAND_KAMU') {
+        const brandLogoEl = document.getElementById('login-brand-logo');
+        if (brandLogoEl) {
+            brandLogoEl.src = _BRAND_LOGO_URL;
+            brandLogoEl.style.display = 'block';
+            brandLogoEl.onerror = () => { brandLogoEl.style.display = 'none'; };
+        }
+    }
 
     // ── PULIHKAN SESI LOGIN (kalau sebelumnya sudah pernah login & belum logout) ──
     // Supabase Auth otomatis simpan sesi di localStorage. Ini cek apakah sesi
